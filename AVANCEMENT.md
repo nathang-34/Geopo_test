@@ -14,8 +14,8 @@ Aucune installation, aucun serveur, aucune connexion Internet nécessaire.
 
 | Étape | Contenu | État |
 |---|---|---|
-| 1 | Structure, thèmes et chapitres, banque d'arguments, sauvegarde et export | ✅ Terminée, en test par l'utilisateur |
-| 2 | Import JSON (vérification, aperçu, doublons) et prompt modèle pour Claude | ⏳ À faire |
+| 1 | Structure, thèmes et chapitres, banque d'arguments, sauvegarde et export | ✅ Terminée et validée |
+| 2 | Import JSON (vérification, aperçu, doublons) et prompt modèle pour Claude | ✅ Terminée, en test par l'utilisateur |
 | 3 | Flashcards, génération depuis les arguments, SM-2, session du jour, tableau de bord | ⏳ À faire |
 | 4 | Aide au plan de dissertation (recherche par pertinence, plan I/II/III, export) | ⏳ À faire |
 | 5 | Bonus : mode colle, frise chronologique, carte du monde | ⏳ À faire |
@@ -34,6 +34,7 @@ Aucune installation, aucun serveur, aucune connexion Internet nécessaire.
 - Rappel de sauvegarde : bandeau si dernière sauvegarde > 3 jours, ou ≥ 30 modifications, ou jamais sauvegardé après 5 modifications. Bouton « Sauvegarder maintenant » toujours visible.
 - Volume prévu : environ 200 arguments et 1 000 flashcards. Stockage localStorage suffisant ; à l'étape 3, enregistrer des statistiques résumées par jour plutôt que chaque réponse.
 - Plan de dissertation (étape 4) : export par copie (texte), fichier `.txt` et impression / PDF ; liste de synonymes modifiable (Chine ~ chinois, Pékin, RPC).
+- Le choix sombre / clair se fait uniquement dans Réglages (bouton retiré de la barre latérale à la demande de l'utilisateur).
 - Apparence : mode sombre par défaut (bleu nuit, accents doré et turquoise), mode clair disponible, taille de texte réglable. PC en priorité, affichage adaptatif.
 - Interface entièrement en français. Pas de tirets cadratins dans les textes.
 
@@ -91,9 +92,28 @@ Format d'import prévu pour l'étape 2 (validé) : `{ format: "geopo-import", ve
 - Pièges JavaScript à retenir : les objets déclarés avec `const` (App, AutoSauvegarde...) ne sont pas accessibles via `window.X` ; tester avec `typeof X !== 'undefined'`.
 - Test : le dossier virtuel du navigateur (OPFS) n'existe pas en `file://`, donc les tests automatiques passent par un petit serveur local (`python3 -m http.server`).
 
+## Étape 2 : page Importer (`js/importer.js`)
+
+- **Prompt modèle** généré par `Vues.importer.genererPrompt({ chapitre, flashcards })` : règles de fond (fidélité au cours, compléments marqués « à vérifier », un argument = une idée en une phrase + 4 à 8 phrases d'explication), règles par champ, liste des noms d'acteurs historiques / organisations / grands ensembles tirée de `pays.js`, liste à jour des thèmes et chapitres, exemple JSON valide. Options : chapitre ciblé, flashcards oui/non. Bouton Copier (presse-papiers, avec une méthode de secours).
+- **Lecture du JSON** (`lireJson`) : retrouve le bloc ```json dans une réponse complète, garde le texte de la première { à la dernière }, corrige automatiquement les virgules en trop et les guillemets typographiques, sinon message clair avec la ligne fautive.
+- **Format d'import** :
+  ```json
+  { "format": "geopo-import", "version": 1,
+    "arguments": [{ "idee", "explication", "exemples": [{ "mesure", "chiffre", "date", "source" }],
+                    "citations": [{ "texte", "auteur", "contexte" }], "chapitres": ["nom"],
+                    "motsCles": [], "pays": [], "dates": [{ "date", "libelle" }] }],
+    "flashcards": [{ "recto", "verso", "chapitre": "nom" }] }
+  ```
+  Tolérances : `motsCles`, `pays` et `chapitres` acceptent un texte séparé par des virgules ; les sous-éléments incomplets sont ignorés avec un avertissement ; les guillemets autour des citations sont retirés.
+- **Vérification** : erreurs bloquantes (idée vide, recto ou verso vide, mauvais type) en rouge ; doublons possibles en orange, décochés par défaut (ressemblance des mots significatifs ≥ 0,7 pour l'idée, ≥ 0,85 pour le recto, avec la banque et dans le même import) ; pays reconnus par nom ou alias (« USA » → « États-Unis »), inconnus ajoutés aux acteurs personnalisés.
+- **Chapitres inconnus** : un choix par nom (associer à un thème ou chapitre existant, créer le chapitre dans un thème, créer un nouveau thème, ignorer). Par défaut : le chapitre le plus ressemblant (≥ 0,5), sinon création dans le dernier thème.
+- **Import** : les éléments reçoivent `source: 'import'`. Les flashcards sont stockées dès maintenant sous la forme `{ id, recto, verso, rattachement, argumentId: null, source, creeLe, modifieLe }` ; les champs de répétition espacée seront ajoutés à l'étape 3 (prévoir des valeurs par défaut dans `Stockage.completer`).
+
 ## Prochaine étape
 
-**Étape 2 : page Importer et prompt modèle.**
-- Coller du JSON, vérifier le format, afficher un aperçu avec cases à cocher, erreurs en rouge, doublons en orange (ressemblance de l'idée principale ou du recto), puis importer la sélection.
-- Associer les noms de chapitres inconnus à un chapitre existant ou en créer un.
-- Prompt modèle avec bouton Copier, qui intègre automatiquement la liste à jour des thèmes et chapitres.
+**Étape 3 : flashcards, répétition espacée, tableau de bord.**
+- Page Flashcards : liste filtrable, création et modification, génération depuis un argument (cases à cocher ; citation dans les deux sens, chiffre → « mesure (date) ? »), lien `argumentId` vers l'argument d'origine.
+- SM-2 avec 4 boutons, raccourcis clavier (Espace pour retourner, 1 à 4 pour noter), 20 nouvelles cartes par jour, jour qui change à 4 h, carte maîtrisée si intervalle ≥ 21 jours.
+- Page Réviser : session du jour filtrable par thème, lien « Voir l'argument » pendant la révision.
+- Tableau de bord : cartes du jour, cartes maîtrisées, taux de réussite par thème, historique des sessions, série de jours (statistiques résumées par jour dans `stats`).
+- Réglages de révision dans la page Réglages.

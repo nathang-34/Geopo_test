@@ -9,7 +9,6 @@ const PAGES_A_VENIR = {
   reviser: { titre: '🔁 Réviser', etape: 3, texte: 'La session de révision du jour (répétition espacée) arrivera à l\'étape 3.' },
   flashcards: { titre: '🃏 Flashcards', etape: 3, texte: 'La gestion des flashcards et leur génération à partir des arguments arriveront à l\'étape 3.' },
   plans: { titre: '📝 Plans de dissertation', etape: 4, texte: 'L\'aide au plan de dissertation arrivera à l\'étape 4.' },
-  importer: { titre: '📥 Importer', etape: 2, texte: 'L\'import de contenu généré par Claude (et le prompt modèle) arrivera à l\'étape 2.' },
 };
 
 const SEUIL_JOURS_RAPPEL = 3;
@@ -23,11 +22,6 @@ const App = {
     this.appliquerApparence();
 
     document.getElementById('btn-sauver-menu').addEventListener('click', () => App.sauvegarderMaintenant());
-    document.getElementById('btn-theme').addEventListener('click', () => {
-      const nouveau = Stockage.donnees.reglages.theme === 'sombre' ? 'clair' : 'sombre';
-      Stockage.reglage('theme', nouveau);
-      App.appliquerApparence();
-    });
 
     // Marque les pages pas encore disponibles dans le menu
     for (const nom of Object.keys(PAGES_A_VENIR)) {
