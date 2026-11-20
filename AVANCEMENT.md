@@ -5,7 +5,7 @@ Ce fichier sert à reprendre le projet dans une nouvelle conversation : il résu
 
 ## Comment ouvrir le site
 
-1. Télécharger le dépôt (GitHub, bouton vert « Code » puis « Download ZIP ») et le décompresser.
+1. Télécharger le dépôt (GitHub, branche `main`, bouton vert « Code » puis « Download ZIP ») et le décompresser.
 2. Double-cliquer sur `index.html` (Chrome ou Edge recommandés).
 
 Aucune installation, aucun serveur, aucune connexion Internet nécessaire.
@@ -108,6 +108,22 @@ Format d'import prévu pour l'étape 2 (validé) : `{ format: "geopo-import", ve
 - **Vérification** : erreurs bloquantes (idée vide, recto ou verso vide, mauvais type) en rouge ; doublons possibles en orange, décochés par défaut (ressemblance des mots significatifs ≥ 0,7 pour l'idée, ≥ 0,85 pour le recto, avec la banque et dans le même import) ; pays reconnus par nom ou alias (« USA » → « États-Unis »), inconnus ajoutés aux acteurs personnalisés.
 - **Chapitres inconnus** : un choix par nom (associer à un thème ou chapitre existant, créer le chapitre dans un thème, créer un nouveau thème, ignorer). Par défaut : le chapitre le plus ressemblant (≥ 0,5), sinon création dans le dernier thème.
 - **Import** : les éléments reçoivent `source: 'import'`. Les flashcards sont stockées dès maintenant sous la forme `{ id, recto, verso, rattachement, argumentId: null, source, creeLe, modifieLe }` ; les champs de répétition espacée seront ajoutés à l'étape 3 (prévoir des valeurs par défaut dans `Stockage.completer`).
+
+## Organisation Git
+
+- Claude travaille sur la branche `claude/awesome-archimedes-mqnv5u`. L'utilisateur fusionne dans `main` (pull request) à chaque étape validée ; les étapes 1 et 2 sont fusionnées (PR n°1).
+- Après une fusion, repartir de `origin/main` avant de continuer.
+
+## Import par le dépôt (en plus du copier-coller)
+
+- L'utilisateur dépose ses photos dans `cours/<chapitre>/` (dépôt public, il est d'accord).
+- Quand il demande « Traite les photos de `cours/xxx` » : lire les photos, produire `imports/xxx.json` au format `geopo-import` en appliquant **exactement les règles du prompt modèle** (`Vues.importer.genererPrompt` dans `js/importer.js`, noms de chapitres actuels du thème, noms d'acteurs de `pays.js`), vérifier le fichier avec la page Importer (test Playwright), puis signaler les passages illisibles et les compléments à vérifier.
+- Les noms de chapitres réels de l'utilisateur sont dans son navigateur, pas dans le dépôt : utiliser ceux de `js/demo.js` et ceux qu'il indique dans la conversation ; les noms inconnus seront de toute façon associés par la page Importer.
+- L'utilisateur charge le fichier avec « 📂 Charger un fichier » (page Importer).
+
+## Évolution future prévue
+
+Rendre le site accessible à d'autres utilisateurs, chacun avec sa propre sauvegarde. Piste naturelle : publier le site avec GitHub Pages. Les données restent dans le navigateur de chaque visiteur, donc chacun a déjà ses propres données ; la sauvegarde automatique fonctionne aussi en https. Le contenu de démo et le thème initial (`js/demo.js`) devront alors être pensés pour un nouvel utilisateur.
 
 ## Prochaine étape
 
