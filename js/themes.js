@@ -54,7 +54,7 @@ Vues.themes = {
     const nbArgs = Stockage.argumentsDe(t.id).length;
     const autres = Stockage.donnees.themes.filter((x) => x.id !== t.id);
     return `
-      <div class="carte theme-bloc">
+      <div class="carte theme-bloc" data-anim-id="${t.id}">
         <div class="theme-entete">
           <div>
             <span class="theme-nom">${U.esc(t.nom)}</span>
@@ -69,7 +69,7 @@ Vues.themes = {
         </div>
         <ul class="liste-chapitres">
           ${t.chapitres.map((c, j) => `
-            <li>
+            <li data-anim-id="${c.id}">
               <span class="nom-chapitre" data-action="voir-chapitre" data-chapitre="${c.id}" title="Voir les arguments de ce chapitre">
                 ${U.esc(c.nom)} <span class="muet petit">(${Stockage.argumentsDe(c.id).length})</span>
               </span>
@@ -115,8 +115,8 @@ Vues.themes = {
         const i = d.themes.indexOf(theme);
         const j = action === 'monter-theme' ? i - 1 : i + 1;
         if (j < 0 || j >= d.themes.length) return;
-        Stockage.modifier((dd) => echanger(dd.themes, i, j));
-        break;
+        this.animer(() => Stockage.modifier((dd) => echanger(dd.themes, i, j)), themeId, `[data-action="${action}"][data-theme="${themeId}"]`);
+        return;
       }
 
       case 'monter-chapitre':
@@ -124,8 +124,8 @@ Vues.themes = {
         const i = theme.chapitres.findIndex((c) => c.id === chapitreId);
         const j = action === 'monter-chapitre' ? i - 1 : i + 1;
         if (j < 0 || j >= theme.chapitres.length) return;
-        Stockage.modifier(() => echanger(theme.chapitres, i, j));
-        break;
+        this.animer(() => Stockage.modifier(() => echanger(theme.chapitres, i, j)), chapitreId, `[data-action="${action}"][data-chapitre="${chapitreId}"]`);
+        return;
       }
 
       case 'renommer-theme': {
@@ -193,14 +193,59 @@ Vues.themes = {
 
   deplacerChapitre(depuisId, chapitreId, versId) {
     if (!versId) return;
-    Stockage.modifier((d) => {
+    this.animer(() => Stockage.modifier((d) => {
       const depuis = d.themes.find((t) => t.id === depuisId);
       const vers = d.themes.find((t) => t.id === versId);
       const i = depuis.chapitres.findIndex((c) => c.id === chapitreId);
       const [ch] = depuis.chapitres.splice(i, 1);
       vers.chapitres.push(ch);
-    });
+    }), chapitreId);
     toast('Chapitre déplacé.');
+  },
+
+  /**
+   * Animation de réorganisation (technique « FLIP ») :
+   * 1. on note la position de chaque thème / chapitre à l'écran ;
+   * 2. on applique la modification et on redessine la page ;
+   * 3. chaque élément qui a bougé repart de son ancienne position
+   *    et glisse jusqu'à la nouvelle. L'élément déplacé s'illumine.
+   */
+  animer(modification, idDeplace, selecteurAFocaliser) {
+    const avant = {};
+    document.querySelectorAll('[data-anim-id]').forEach((e) => { avant[e.dataset.animId] = e.getBoundingClientRect().top; });
+
+    modification();
     App.rafraichir();
+
+    // Remet le focus sur le bouton cliqué, pour pouvoir cliquer plusieurs fois de suite
+    if (selecteurAFocaliser) {
+      const b = document.querySelector(selecteurAFocaliser);
+      if (b && !b.disabled) b.focus();
+    }
+
+    // Respecte le réglage « réduire les animations » de Windows
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    document.querySelectorAll('[data-anim-id]').forEach((e) => {
+      const ancien = avant[e.dataset.animId];
+      if (ancien === undefined) return;
+      const decalage = ancien - e.getBoundingClientRect().top;
+      if (Math.abs(decalage) < 1) return;
+      e.animate(
+        [{ transform: `translateY(${decalage}px)` }, { transform: 'translateY(0)' }],
+        { duration: 350, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' },
+      );
+    });
+
+    const deplace = document.querySelector(`[data-anim-id="${idDeplace}"]`);
+    if (deplace) {
+      const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+      deplace.style.position = 'relative';
+      deplace.style.zIndex = '2';
+      deplace.animate(
+        [{ boxShadow: `0 0 0 2px ${accent}` }, { boxShadow: `0 0 0 2px ${accent}`, offset: 0.5 }, { boxShadow: '0 0 0 0 transparent' }],
+        { duration: 1000, easing: 'ease-out' },
+      );
+    }
   },
 };

@@ -49,6 +49,7 @@ Aucune installation, aucun serveur, aucune connexion Internet nécessaire.
   - `js/composants.js` : `ChampEtiquettes`, `ChampPays`, `ChampMotsCles`, `ArbreRattachements`, `optionsFiltreThemes`.
   - Pages : `tableau.js`, `themes.js`, `arguments.js`, `sauvegarde.js`, `reglages.js`. Chaque page s'enregistre dans `Vues.<nom> = { rendre(el, params, opts) }`.
   - `js/app.js` : démarrage, navigation, bandeau de rappel de sauvegarde. Les pages pas encore construites sont listées dans `PAGES_A_VENIR`.
+- Réorganisation des thèmes et chapitres animée (technique FLIP dans `Vues.themes.animer`, attribut `data-anim-id`), désactivée si Windows demande de réduire les animations.
 - Chaque affichage de page part d'un bloc HTML neuf (`App.nouvellePage()`), pour éviter d'accumuler les écouteurs d'événements.
 - Toute modification de données passe par `Stockage.modifier(d => ...)`, qui enregistre et incrémente le compteur de modifications (rappel de sauvegarde).
 
@@ -79,6 +80,10 @@ Fichier de sauvegarde exporté : `{ format: "geopo-sauvegarde", version: 1, expo
 Fusion : ajout des éléments absents (par `id`), et pour les éléments présents des deux côtés, la version au `modifieLe` le plus récent l'emporte.
 
 Format d'import prévu pour l'étape 2 (validé) : `{ format: "geopo-import", version: 1, arguments: [...], flashcards: [...] }`, avec les chapitres désignés **par leur nom** (champ `chapitres`), et un choix d'association si un nom est inconnu.
+
+## Question en cours
+
+Sauvegarde automatique dans un fichier : options présentées à l'utilisateur (fichier choisi une fois et réécrit automatiquement via l'API File System Access de Chrome/Edge, ou téléchargement automatique périodique). En attente de son choix.
 
 ## Prochaine étape
 
