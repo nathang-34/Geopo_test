@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="sombre">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Géopo Révision</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Menu latéral -->
+    <aside class="menu">
+      <div class="menu-titre">
+        <span class="logo">🌍</span>
+        <div>
+          <div class="nom-site">Géopo Révision</div>
+          <div class="sous-titre">ECG · HGG</div>
+        </div>
+      </div>
+      <nav class="menu-liens">
+        <a href="#/tableau" data-vue="tableau">📊 Tableau de bord</a>
+        <a href="#/reviser" data-vue="reviser">🔁 Réviser</a>
+        <a href="#/flashcards" data-vue="flashcards">🃏 Flashcards</a>
+        <a href="#/arguments" data-vue="arguments">📚 Arguments</a>
+        <a href="#/themes" data-vue="themes">🗂️ Thèmes</a>
+        <a href="#/plans" data-vue="plans">📝 Plans</a>
+        <a href="#/importer" data-vue="importer">📥 Importer</a>
+        <a href="#/sauvegarde" data-vue="sauvegarde">💾 Sauvegarde</a>
+        <a href="#/reglages" data-vue="reglages">⚙️ Réglages</a>
+      </nav>
+      <div class="menu-bas">
+        <button class="btn btn-principal btn-bloc" id="btn-sauver-menu">💾 Sauvegarder maintenant</button>
+        <div class="etat-sauvegarde" id="etat-sauvegarde"></div>
+        <a class="etat-auto" id="etat-auto" href="#/sauvegarde" title="Voir les réglages de sauvegarde"></a>
+      </div>
+    </aside>
+
+    <!-- Contenu principal -->
+    <main class="contenu">
+      <div id="bandeau"></div>
+      <div id="vue"></div>
+    </main>
+  </div>
+
+  <div id="modales"></div>
+  <div id="toasts"></div>
+
+  <!-- Scripts : l'ordre compte (chaque fichier utilise les précédents) -->
+  <script src="js/utils.js"></script>
+  <script src="js/pays.js"></script>
+  <script src="js/demo.js"></script>
+  <script src="js/stockage.js"></script>
+  <script src="js/autosauvegarde.js"></script>
+  <script src="js/composants.js"></script>
+  <script src="js/tableau.js"></script>
+  <script src="js/themes.js"></script>
+  <script src="js/arguments.js"></script>
+  <script src="js/sauvegarde.js"></script>
+  <script src="js/reglages.js"></script>
+  <script src="js/importer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
