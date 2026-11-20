@@ -22,9 +22,12 @@ Vues.sauvegarde = {
         <p>La sauvegarde télécharge <strong>un fichier unique</strong> qui contient <em>tout</em> (thèmes, arguments, flashcards, plans, statistiques, réglages). Garde les derniers fichiers dans un dossier sûr, idéalement aussi sur une clé USB ou un cloud (OneDrive, Google Drive...).</p>
       </div>
 
+      ${this.htmlAuto()}
+
       <div class="carte">
         <h2>Exporter (télécharger une sauvegarde)</h2>
-        <p>Dernière sauvegarde : <strong>${m.derniereSauvegarde ? U.dateLisible(m.derniereSauvegarde) + ' (' + U.depuis(m.derniereSauvegarde) + ')' : 'jamais'}</strong>
+        <p class="muet petit">Utile pour mettre une copie ailleurs (clé USB, autre PC), même si la sauvegarde automatique est activée.</p>
+        <p>Dernière sauvegarde (automatique ou manuelle) : <strong>${m.derniereSauvegarde ? U.dateLisible(m.derniereSauvegarde) + ' (' + U.depuis(m.derniereSauvegarde) + ')' : 'jamais'}</strong>
           · ${U.pluriel(m.modifsDepuisSauvegarde || 0, 'modification')} depuis.</p>
         <button class="btn btn-principal" data-exporter>⬇️ Télécharger la sauvegarde complète</button>
         <p class="muet petit" style="margin-top:8px">Le fichier est enregistré dans ton dossier « Téléchargements » sous un nom du type <code>${U.esc(Stockage.nomFichierSauvegarde())}</code>.</p>
@@ -53,7 +56,18 @@ Vues.sauvegarde = {
       </div>
     `;
 
-    el.querySelector('[data-exporter]').addEventListener('click', () => { App.sauvegarderMaintenant(); App.rafraichir(); });
+    el.querySelector('[data-exporter]').addEventListener('click', () => { App.telechargerSauvegarde(); App.rafraichir(); });
+    el.querySelectorAll('[data-auto]').forEach((b) => b.addEventListener('click', async () => {
+      const action = b.dataset.auto;
+      if (action === 'activer') await AutoSauvegarde.choisirDossier();
+      if (action === 'reprendre') await AutoSauvegarde.reprendre();
+      if (action === 'ecrire') { if (await AutoSauvegarde.ecrire()) toast('Fichier mis à jour.'); }
+      if (action === 'desactiver') {
+        const ok = await confirmer('<p>Désactiver la sauvegarde automatique ?</p><p class="muet">Les fichiers déjà présents dans le dossier sont conservés.</p>', { texteOk: 'Désactiver', danger: true });
+        if (ok) await AutoSauvegarde.desactiver();
+      }
+      App.rafraichir();
+    }));
     el.querySelector('[data-suppr-demo]').addEventListener('click', () => this.demanderSuppressionDemo());
     el.querySelector('[data-tout-effacer]').addEventListener('click', () => this.toutEffacer());
     el.querySelector('[data-fichier]').addEventListener('change', (e) => {
@@ -64,6 +78,50 @@ Vues.sauvegarde = {
       lecteur.onerror = () => toast('Impossible de lire ce fichier.', 'erreur');
       lecteur.readAsText(fichier, 'utf-8');
     });
+  },
+
+  /** Carte « Sauvegarde automatique » */
+  htmlAuto() {
+    const a = AutoSauvegarde;
+    const nomDossier = a.dossier ? U.esc(a.dossier.name) : '';
+    let corps;
+    switch (a.etat) {
+      case 'non-supportee':
+        corps = `<p>⚠️ Ton navigateur ne permet pas d'écrire automatiquement dans un dossier. Ouvre le site avec <strong>Chrome</strong> ou <strong>Edge</strong> pour l'activer. En attendant, utilise le téléchargement ci-dessous.</p>`;
+        break;
+      case 'inactive':
+        corps = `
+          <p>Le site peut copier ton travail <strong>tout seul</strong> dans un dossier de ton PC, quelques secondes après chaque modification. En choisissant un dossier <strong>OneDrive</strong>, tu as en plus une copie en ligne.</p>
+          <ol>
+            <li>Clique sur « Choisir le dossier ».</li>
+            <li>Dans la fenêtre, clique sur <strong>OneDrive</strong> dans la colonne de gauche, crée un dossier (par exemple « Géopo Révision ») et ouvre-le.</li>
+            <li>Clique sur « Sélectionner un dossier », puis accepte les deux demandes d'autorisation (voir les fichiers, puis enregistrer les modifications).</li>
+          </ol>
+          <button class="btn btn-principal" data-auto="activer">📁 Choisir le dossier</button>`;
+        break;
+      case 'pause':
+        corps = `
+          <p>⏸️ <strong>En pause.</strong> Dossier choisi : « ${nomDossier} ». Par sécurité, Chrome demande ton accord à chaque ouverture du site. Si Chrome te propose « Autoriser à chaque visite », choisis-le : tu n'auras plus à cliquer.</p>
+          <div class="barre-actions">
+            <button class="btn btn-principal" data-auto="reprendre">▶️ Reprendre la sauvegarde auto</button>
+            <button class="btn" data-auto="activer">Changer de dossier</button>
+            <button class="btn btn-discret" data-auto="desactiver">Désactiver</button>
+          </div>`;
+        break;
+      default:
+        corps = `
+          <p>${a.etat === 'erreur' ? '⚠️ <strong>La dernière tentative a échoué.</strong>' : '✅ <strong>Activée.</strong>'} Dossier : « ${nomDossier} »${a.derniereEcriture ? ` · dernier enregistrement ${U.depuis(a.derniereEcriture.toISOString())}` : ''}.</p>
+          <p class="muet petit">Dans ce dossier :<br>
+            · <code>${a.NOM_FICHIER}</code> : ton travail, mis à jour quelques secondes après chaque modification ;<br>
+            · <code>secours/</code> : une copie par jour (état à la première ouverture de la journée), les ${a.NB_SECOURS} derniers jours sont gardés.<br>
+            Pour revenir en arrière, importe l'un de ces fichiers avec le bloc « Importer une sauvegarde » ci-dessous.</p>
+          <div class="barre-actions">
+            <button class="btn btn-principal" data-auto="ecrire">Enregistrer maintenant</button>
+            <button class="btn" data-auto="activer">Changer de dossier</button>
+            <button class="btn btn-discret" data-auto="desactiver">Désactiver</button>
+          </div>`;
+    }
+    return `<div class="carte"><h2>🔄 Sauvegarde automatique</h2>${corps}</div>`;
   },
 
   preparerImport(el, texte) {

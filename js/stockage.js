@@ -100,7 +100,8 @@ const Stockage = {
     fonction(this.donnees);
     this.donnees.meta.modifsDepuisSauvegarde = (this.donnees.meta.modifsDepuisSauvegarde || 0) + 1;
     this.ecrire();
-    if (window.App) App.majEtatSauvegarde();
+    if (typeof AutoSauvegarde !== 'undefined') AutoSauvegarde.planifier();
+    if (typeof App !== 'undefined') App.majEtatSauvegarde();
   },
 
   /** Modifie un réglage sans compter comme une modification de contenu */
@@ -201,6 +202,7 @@ const Stockage = {
     this.donnees.meta.derniereSauvegarde = new Date().toISOString();
     this.donnees.meta.modifsDepuisSauvegarde = 0;
     this.ecrire();
+    if (typeof AutoSauvegarde !== 'undefined') AutoSauvegarde.planifier();
   },
 
   /**
@@ -241,5 +243,6 @@ const Stockage = {
     neuf.reglages = this.donnees.reglages;
     this.donnees = neuf;
     this.ecrire();
+    if (typeof AutoSauvegarde !== 'undefined') AutoSauvegarde.planifier();
   },
 };

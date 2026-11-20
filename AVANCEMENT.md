@@ -81,9 +81,15 @@ Fusion : ajout des éléments absents (par `id`), et pour les éléments présen
 
 Format d'import prévu pour l'étape 2 (validé) : `{ format: "geopo-import", version: 1, arguments: [...], flashcards: [...] }`, avec les chapitres désignés **par leur nom** (champ `chapitres`), et un choix d'association si un nom est inconnu.
 
-## Question en cours
+## Sauvegarde automatique (ajoutée après l'étape 1, validée : option A avec OneDrive)
 
-Sauvegarde automatique dans un fichier : options présentées à l'utilisateur (fichier choisi une fois et réécrit automatiquement via l'API File System Access de Chrome/Edge, ou téléchargement automatique périodique). En attente de son choix.
+- `js/autosauvegarde.js` : l'utilisateur choisit un dossier une fois (`showDirectoryPicker`, fonctionne en `file://` sous Chrome et Edge). Le dossier est mémorisé dans IndexedDB (base `geopo-revision`, magasin `reglages`, clé `dossier-sauvegarde`).
+- 3 secondes après chaque `Stockage.modifier`, le fichier `geopo-sauvegarde-auto.json` est réécrit (même format que l'export manuel). Écriture immédiate si l'onglet est caché ou fermé.
+- Copie de secours : `secours/geopo-secours-AAAA-MM-JJ.json`, une par jour (état à la première écriture du jour), 7 gardées.
+- États : `non-supportee`, `inactive`, `pause` (Chrome redemande l'autorisation à chaque ouverture : bouton « Reprendre »), `active`, `erreur`. Message bref dans le menu (`#etat-auto`) et bandeau en cas de pause ou d'erreur.
+- Le bandeau « Pense à sauvegarder » ne s'affiche plus quand la sauvegarde auto est active. Le bouton « Sauvegarder maintenant » du menu met à jour le fichier auto (ou télécharge un fichier si la sauvegarde auto n'est pas activée).
+- Pièges JavaScript à retenir : les objets déclarés avec `const` (App, AutoSauvegarde...) ne sont pas accessibles via `window.X` ; tester avec `typeof X !== 'undefined'`.
+- Test : le dossier virtuel du navigateur (OPFS) n'existe pas en `file://`, donc les tests automatiques passent par un petit serveur local (`python3 -m http.server`).
 
 ## Prochaine étape
 

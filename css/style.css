@@ -101,6 +101,10 @@ p { margin: 0 0 0.8em; }
 .menu-bas { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
 .etat-sauvegarde { font-size: 0.8rem; color: var(--texte-doux); text-align: center; }
 .etat-sauvegarde.alerte { color: var(--attention); }
+.etat-auto { display: block; font-size: 0.8rem; text-align: center; color: var(--texte-doux); text-decoration: none; padding: 4px 6px; border-radius: 6px; background: var(--surface-2); }
+.etat-auto.ok { color: var(--succes); }
+.etat-auto.alerte { color: var(--attention); }
+.etat-auto:empty { display: none; }
 
 .contenu { padding: 28px 36px 60px; max-width: 1150px; width: 100%; }
 

@@ -35,6 +35,7 @@ const App = {
     }
 
     try { this.rappelMasque = sessionStorage.getItem('geopo-rappel-masque') === '1'; } catch (e) { /* rien */ }
+    AutoSauvegarde.init();
 
     window.addEventListener('hashchange', () => App.afficher());
     if (!location.hash) location.hash = '#/tableau';
@@ -109,8 +110,24 @@ const App = {
     document.documentElement.dataset.taille = r.taille;
   },
 
+  /**
+   * Bouton « Sauvegarder maintenant » :
+   * - sauvegarde auto active : met le fichier à jour tout de suite ;
+   * - sinon : télécharge un fichier de sauvegarde.
+   */
+  async sauvegarderMaintenant() {
+    const auto = AutoSauvegarde;
+    if (auto.etat === 'pause') { await auto.reprendre(); return; }
+    if (auto.etat === 'active' || auto.etat === 'erreur') {
+      clearTimeout(auto.minuteur);
+      if (await auto.ecrire()) toast(`Fichier de sauvegarde mis à jour dans « ${auto.dossier.name} ».`);
+      return;
+    }
+    this.telechargerSauvegarde();
+  },
+
   /** Télécharge la sauvegarde complète */
-  sauvegarderMaintenant() {
+  telechargerSauvegarde() {
     const contenu = Stockage.exporter();
     U.telecharger(Stockage.nomFichierSauvegarde(), contenu);
     toast('Sauvegarde téléchargée. Range-la dans un dossier sûr (ou une clé USB, un cloud...).');
@@ -139,23 +156,53 @@ const App = {
     etat.textContent = 'Dernière sauvegarde : ' + U.depuis(m.derniereSauvegarde);
     etat.classList.toggle('alerte', !!message);
 
+    const auto = AutoSauvegarde;
+    const etatAuto = document.getElementById('etat-auto');
+    const t = auto.texteEtat();
+    etatAuto.textContent = t.texte;
+    etatAuto.className = 'etat-auto ' + t.classe;
+    const autoMarche = auto.etat === 'active';
+    etat.style.display = autoMarche ? 'none' : '';
+
     const bandeau = document.getElementById('bandeau');
-    if (message && !this.rappelMasque) {
+    if (auto.etat === 'pause' && !this.rappelMasque) {
+      bandeau.innerHTML = `<div class="bandeau">
+          <span>⏸️ <strong>Sauvegarde automatique en pause.</strong> Par sécurité, Chrome demande ton accord à chaque ouverture du site pour écrire dans « ${U.esc(auto.dossier.name)} ».</span>
+          <span class="barre-actions">
+            <button class="btn btn-principal btn-petit" data-reprendre>Reprendre la sauvegarde auto</button>
+            <button class="btn btn-discret btn-petit" data-plus-tard>Plus tard</button>
+          </span>
+        </div>`;
+      bandeau.querySelector('[data-reprendre]').addEventListener('click', () => auto.reprendre());
+    } else if (auto.etat === 'erreur') {
+      bandeau.innerHTML = `<div class="bandeau">
+          <span>⚠️ <strong>La sauvegarde automatique a échoué.</strong> Le fichier est peut-être ouvert dans un autre logiciel, ou le dossier a été déplacé. Tes données restent enregistrées dans le navigateur.</span>
+          <span class="barre-actions">
+            <button class="btn btn-principal btn-petit" data-reessayer>Réessayer</button>
+            <a class="btn btn-discret btn-petit" href="#/sauvegarde">Réglages</a>
+          </span>
+        </div>`;
+      bandeau.querySelector('[data-reessayer]').addEventListener('click', () => auto.ecrire());
+    } else if (message && !autoMarche && !this.rappelMasque) {
       bandeau.innerHTML = `<div class="bandeau">
           <span>💾 <strong>Pense à sauvegarder.</strong> ${U.esc(message)}</span>
           <span class="barre-actions">
+            ${auto.etat === 'inactive' ? '<a class="btn btn-petit" href="#/sauvegarde">Activer la sauvegarde auto</a>' : ''}
             <button class="btn btn-principal btn-petit" data-sauver>Sauvegarder maintenant</button>
             <button class="btn btn-discret btn-petit" data-plus-tard>Plus tard</button>
           </span>
         </div>`;
       bandeau.querySelector('[data-sauver]').addEventListener('click', () => App.sauvegarderMaintenant());
-      bandeau.querySelector('[data-plus-tard]').addEventListener('click', () => {
+    } else {
+      bandeau.innerHTML = '';
+    }
+    const plusTard = bandeau.querySelector('[data-plus-tard]');
+    if (plusTard) {
+      plusTard.addEventListener('click', () => {
         App.rappelMasque = true;
         try { sessionStorage.setItem('geopo-rappel-masque', '1'); } catch (e) { /* rien */ }
         App.majEtatSauvegarde();
       });
-    } else {
-      bandeau.innerHTML = '';
     }
   },
 };
