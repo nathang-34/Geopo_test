@@ -16,7 +16,7 @@ Aucune installation, aucun serveur, aucune connexion Internet nécessaire.
 |---|---|---|
 | 1 | Structure, thèmes et chapitres, banque d'arguments, sauvegarde et export | ✅ Terminée et validée |
 | 2 | Import JSON (vérification, aperçu, doublons) et prompt modèle pour Claude | ✅ Terminée et validée (testée avec un vrai cours) |
-| 3 | Flashcards, génération depuis les arguments, SM-2, session du jour, tableau de bord | ✅ Terminée, en test par l'utilisateur |
+| 3 | Flashcards, génération depuis les arguments, SM-2, session du jour, tableau de bord | ✅ Terminée et fusionnée (PR n°2) ; ajout du choix mélangé / dans l'ordre |
 | 4 | Aide au plan de dissertation (recherche par pertinence, plan I/II/III, export) | ⏳ À faire |
 | 5 | Bonus : mode colle, frise chronologique, carte du monde | ⏳ À faire |
 
@@ -126,7 +126,7 @@ Format d'import prévu pour l'étape 2 (validé) : `{ format: "geopo-import", ve
 - `js/stats.js` (`Stats`) : résumé par jour (seule la première réponse à une carte dans une séance compte pour la réussite), séances, série de jours (le jour en cours ne casse pas la série tant qu'il n'est pas fini), réussite sur 30 jours globale et par thème.
 - `js/flashcards.js` : outils `Flashcards` (`fileDuJour(filtre)` = cartes dues + nouvelles dans la limite quotidienne, `propositions(arg)`, `ouvrirGeneration`, `ouvrirFormulaire`, `ouvrirFiche`) et page `Vues.flashcards` (filtres thème, état, origine, recherche, argument ; affichage par 100).
 - Génération depuis un argument (bouton dans la fiche d'un argument) : citation → auteur, auteur → citation (« de » / « d' » selon l'initiale), chiffre → « mesure (date) ? », date → événement (décoché par défaut). Textes modifiables avant création, clé anti-doublon, chapitre de rangement au choix.
-- `js/reviser.js` : accueil (filtre par thème, compteurs, série), séance (dues mélangées, une nouvelle toutes les 3 cartes), raccourcis Espace/Entrée puis 1 à 4, aperçu de l'intervalle sur chaque bouton, « Voir l'argument » et « Modifier la carte » après la réponse, fin de séance avec bilan. Options si rien à réviser : réviser en avance (20 cartes), 10 nouvelles cartes de plus.
+- `js/reviser.js` : accueil (filtre par thème, choix de l'ordre, compteurs, série), séance rangée selon `reglages.ordreRevision` : `'melange'` (par défaut, tirage au hasard de toutes les cartes de la séance) ou `'ordre'` (chapitre par chapitre selon la page Thèmes, puis ordre de création / d'import) ; choix aussi dans Réglages. Les nouvelles cartes du jour restent les plus anciennes (limite quotidienne), seul leur ordre de passage change, raccourcis Espace/Entrée puis 1 à 4, aperçu de l'intervalle sur chaque bouton, « Voir l'argument » et « Modifier la carte » après la réponse, fin de séance avec bilan. Options si rien à réviser : réviser en avance (20 cartes), 10 nouvelles cartes de plus.
 - Tableau de bord : tuiles (à réviser, série, maîtrisées, réussite 30 j), histogramme 30 jours (une seule série, info-bulle par jour, version tableau), tableau par thème, dernières séances, contenu de la banque.
 - Menu : pastille avec le nombre de cartes à réviser (`App.majBadgeReviser`).
 - Réglages : nouvelles cartes par jour, heure de changement de jour, effacement des statistiques.
