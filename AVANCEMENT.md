@@ -15,8 +15,8 @@ Aucune installation, aucun serveur, aucune connexion Internet nécessaire.
 | Étape | Contenu | État |
 |---|---|---|
 | 1 | Structure, thèmes et chapitres, banque d'arguments, sauvegarde et export | ✅ Terminée et validée |
-| 2 | Import JSON (vérification, aperçu, doublons) et prompt modèle pour Claude | ✅ Terminée, en test par l'utilisateur |
-| 3 | Flashcards, génération depuis les arguments, SM-2, session du jour, tableau de bord | ⏳ À faire |
+| 2 | Import JSON (vérification, aperçu, doublons) et prompt modèle pour Claude | ✅ Terminée et validée (testée avec un vrai cours) |
+| 3 | Flashcards, génération depuis les arguments, SM-2, session du jour, tableau de bord | ✅ Terminée, en test par l'utilisateur |
 | 4 | Aide au plan de dissertation (recherche par pertinence, plan I/II/III, export) | ⏳ À faire |
 | 5 | Bonus : mode colle, frise chronologique, carte du monde | ⏳ À faire |
 
@@ -68,9 +68,16 @@ Aucune installation, aucun serveur, aucune connexion Internet nécessaire.
     motsCles: [texte], pays: [nomActeur], dates: [{ date, libelle }],
     demo?: true, creeLe, modifieLe          // dates ISO
   }],
-  flashcards: [],   // étape 3 (prévu : { id, recto, verso, rattachement, argumentId?, demo?, sm2..., creeLe, modifieLe })
+  flashcards: [{
+    id, recto, verso, rattachement,         // un seul id de thème ou de chapitre, ou null
+    argumentId, cle,                        // lien vers l'argument d'origine et clé anti-doublon (cartes générées)
+    source: 'manuel'|'argument'|'import', demo?,
+    sr: { intervalle, facilite, repetitions, echeance: 'AAAA-MM-JJ'|null, echecs, revisions, derniereRevision },
+    creeLe, modifieLe
+  }],
   plans: [],        // étape 4
-  stats: {},        // étape 3
+  stats: { jours: { 'AAAA-MM-JJ': { revues, reussies, nouvelles, secondes, themes: { idTheme: [revues, reussies] } } },
+           sessions: [{ debut, fin, revues, reussies, filtre, type }] },   // 100 dernières séances
   paysPerso: [{ nom }],
   reglages: { theme: 'sombre'|'clair', taille: 'normal'|'grand', nouvellesParJour: 20, heureChangementJour: 4 },
   meta: { creeLe, derniereSauvegarde, modifsDepuisSauvegarde }
@@ -109,6 +116,23 @@ Format d'import prévu pour l'étape 2 (validé) : `{ format: "geopo-import", ve
 - **Chapitres inconnus** : un choix par nom (associer à un thème ou chapitre existant, créer le chapitre dans un thème, créer un nouveau thème, ignorer). Par défaut : le chapitre le plus ressemblant (≥ 0,5), sinon création dans le dernier thème.
 - **Import** : les éléments reçoivent `source: 'import'`. Les flashcards sont stockées dès maintenant sous la forme `{ id, recto, verso, rattachement, argumentId: null, source, creeLe, modifieLe }` ; les champs de répétition espacée seront ajoutés à l'étape 3 (prévoir des valeurs par défaut dans `Stockage.completer`).
 
+## Étape 3 : flashcards et répétition espacée
+
+- `js/sm2.js` (`Revision`) : jour logique (changement à `heureChangementJour`, 4 h par défaut), algorithme SM-2 adapté :
+  - À revoir : facilité − 0,2, répétitions remises à 0, la carte revient 3 cartes plus loin dans la séance (échéance = aujourd'hui) ;
+  - 1re réussite : 1 j (Facile : 4 j) ; 2e : Difficile 3 j, Bien 6 j, Facile 10 j ; ensuite intervalle × 1,2 (Difficile), × facilité (Bien), × facilité × 1,3 (Facile) ;
+  - facilité : Difficile − 0,15, Facile + 0,15, minimum 1,3 ; ± 5 % de hasard au-delà de 7 jours ; maximum 10 ans ;
+  - carte maîtrisée si intervalle ≥ 21 jours (`SEUIL_MAITRISE`).
+- `js/stats.js` (`Stats`) : résumé par jour (seule la première réponse à une carte dans une séance compte pour la réussite), séances, série de jours (le jour en cours ne casse pas la série tant qu'il n'est pas fini), réussite sur 30 jours globale et par thème.
+- `js/flashcards.js` : outils `Flashcards` (`fileDuJour(filtre)` = cartes dues + nouvelles dans la limite quotidienne, `propositions(arg)`, `ouvrirGeneration`, `ouvrirFormulaire`, `ouvrirFiche`) et page `Vues.flashcards` (filtres thème, état, origine, recherche, argument ; affichage par 100).
+- Génération depuis un argument (bouton dans la fiche d'un argument) : citation → auteur, auteur → citation (« de » / « d' » selon l'initiale), chiffre → « mesure (date) ? », date → événement (décoché par défaut). Textes modifiables avant création, clé anti-doublon, chapitre de rangement au choix.
+- `js/reviser.js` : accueil (filtre par thème, compteurs, série), séance (dues mélangées, une nouvelle toutes les 3 cartes), raccourcis Espace/Entrée puis 1 à 4, aperçu de l'intervalle sur chaque bouton, « Voir l'argument » et « Modifier la carte » après la réponse, fin de séance avec bilan. Options si rien à réviser : réviser en avance (20 cartes), 10 nouvelles cartes de plus.
+- Tableau de bord : tuiles (à réviser, série, maîtrisées, réussite 30 j), histogramme 30 jours (une seule série, info-bulle par jour, version tableau), tableau par thème, dernières séances, contenu de la banque.
+- Menu : pastille avec le nombre de cartes à réviser (`App.majBadgeReviser`).
+- Réglages : nouvelles cartes par jour, heure de changement de jour, effacement des statistiques.
+- Démo : 27 flashcards générées une seule fois à partir des arguments de démo (`meta.cartesDemoAjoutees`).
+- Supprimer un argument supprime aussi les flashcards générées à partir de lui (message dans la confirmation).
+
 ## Organisation Git
 
 - Claude travaille sur la branche `claude/awesome-archimedes-mqnv5u`. L'utilisateur fusionne dans `main` (pull request) à chaque étape validée ; les étapes 1 et 2 sont fusionnées (PR n°1).
@@ -127,9 +151,7 @@ Rendre le site accessible à d'autres utilisateurs, chacun avec sa propre sauveg
 
 ## Prochaine étape
 
-**Étape 3 : flashcards, répétition espacée, tableau de bord.**
-- Page Flashcards : liste filtrable, création et modification, génération depuis un argument (cases à cocher ; citation dans les deux sens, chiffre → « mesure (date) ? »), lien `argumentId` vers l'argument d'origine.
-- SM-2 avec 4 boutons, raccourcis clavier (Espace pour retourner, 1 à 4 pour noter), 20 nouvelles cartes par jour, jour qui change à 4 h, carte maîtrisée si intervalle ≥ 21 jours.
-- Page Réviser : session du jour filtrable par thème, lien « Voir l'argument » pendant la révision.
-- Tableau de bord : cartes du jour, cartes maîtrisées, taux de réussite par thème, historique des sessions, série de jours (statistiques résumées par jour dans `stats`).
-- Réglages de révision dans la page Réglages.
+**Étape 4 : aide au plan de dissertation.**
+- Saisie d'un sujet ; recherche dans la banque par pertinence (mots-clés, chapitres, texte, accents ignorés, liste de synonymes modifiable : Chine ~ chinois, Pékin, RPC).
+- Construction d'un plan en I / II / III avec sous-parties, en y rangeant les arguments choisis.
+- Sauvegarde des plans (`plans`), consultation ultérieure, export : copier (texte), fichier `.txt`, impression / PDF, avec exemples et citations.

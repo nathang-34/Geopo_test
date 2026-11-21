@@ -165,8 +165,9 @@ Vues.sauvegarde = {
 
   async demanderSuppressionDemo() {
     const nb = Stockage.donnees.arguments.filter((a) => a.demo).length;
+    const nbCartes = Stockage.donnees.flashcards.filter((c) => c.demo).length;
     const ok = await confirmer(
-      `<p>Supprimer les <strong>${U.pluriel(nb, 'argument')} de démonstration</strong> (étiquette « Démo ») ?</p>
+      `<p>Supprimer les <strong>${U.pluriel(nb, 'argument')} et ${U.pluriel(nbCartes, 'flashcard')} de démonstration</strong> (étiquette « Démo ») ?</p>
        <p class="muet">Ton thème, tes chapitres et tout ce que tu as créé toi-même sont conservés.</p>`,
       { titre: 'Supprimer la démo', texteOk: 'Supprimer la démo', danger: true },
     );

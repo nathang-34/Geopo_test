@@ -6,8 +6,6 @@
 
 /* Pages prévues pour les étapes suivantes */
 const PAGES_A_VENIR = {
-  reviser: { titre: '🔁 Réviser', etape: 3, texte: 'La session de révision du jour (répétition espacée) arrivera à l\'étape 3.' },
-  flashcards: { titre: '🃏 Flashcards', etape: 3, texte: 'La gestion des flashcards et leur génération à partir des arguments arriveront à l\'étape 3.' },
   plans: { titre: '📝 Plans de dissertation', etape: 4, texte: 'L\'aide au plan de dissertation arrivera à l\'étape 4.' },
 };
 
@@ -19,6 +17,7 @@ const App = {
 
   demarrer() {
     Stockage.charger();
+    this.ajouterCartesDemo();
     this.appliquerApparence();
 
     document.getElementById('btn-sauver-menu').addEventListener('click', () => App.sauvegarderMaintenant());
@@ -38,6 +37,35 @@ const App = {
     if (!Stockage.disponible) {
       toast("Attention : ton navigateur bloque l'enregistrement local. Tes modifications seront perdues à la fermeture.", 'erreur', 15000);
     }
+  },
+
+  /**
+   * Une seule fois : crée les flashcards de démonstration à partir des
+   * arguments de démonstration (y compris pour les données créées avant l'étape 3).
+   */
+  ajouterCartesDemo() {
+    const d = Stockage.donnees;
+    if (d.meta.cartesDemoAjoutees) return;
+    const argsDemo = d.arguments.filter((a) => a.demo);
+    Stockage.modifier((dd) => {
+      for (const a of argsDemo) {
+        const ratt = a.rattachements.find((r) => Stockage.rattachement(r)) || null;
+        for (const p of Flashcards.propositions(a)) {
+          if (p.coche) Flashcards.ajouter(dd, { recto: p.recto, verso: p.verso, rattachement: ratt, argumentId: a.id, cle: p.cle, source: 'argument', demo: true });
+        }
+      }
+      dd.meta.cartesDemoAjoutees = true;
+    });
+    if (!argsDemo.length) d.meta.modifsDepuisSauvegarde = Math.max(0, d.meta.modifsDepuisSauvegarde - 1);
+  },
+
+  /** Nombre de cartes à réviser, affiché dans le menu */
+  majBadgeReviser() {
+    const lien = document.querySelector('.menu-liens a[data-vue="reviser"]');
+    if (!lien) return;
+    const f = Flashcards.fileDuJour('');
+    const n = f.dues.length + f.nouvelles.length;
+    lien.innerHTML = `🔁 Réviser${n ? ` <span class="badge">${n}</span>` : ''}`;
   },
 
   /** Lit l'adresse (#/page?param=valeur) */
@@ -144,6 +172,7 @@ const App = {
 
   /** Met à jour le petit texte du menu et le bandeau de rappel */
   majEtatSauvegarde() {
+    this.majBadgeReviser();
     const m = Stockage.donnees.meta;
     const etat = document.getElementById('etat-sauvegarde');
     const message = this.messageRappel();

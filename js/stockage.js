@@ -20,7 +20,7 @@ const Stockage = {
       arguments: Demo.argumentsDemo(),
       flashcards: [],      // étape 3
       plans: [],           // étape 4
-      stats: {},           // étape 3
+      stats: { jours: {}, sessions: [] },
       paysPerso: [],
       reglages: {
         theme: 'sombre',
@@ -71,6 +71,15 @@ const Stockage = {
       if (!Array.isArray(res[cle])) res[cle] = [];
     }
     for (const t of res.themes) if (!Array.isArray(t.chapitres)) t.chapitres = [];
+    if (!res.stats || typeof res.stats !== 'object' || Array.isArray(res.stats)) res.stats = {};
+    if (!res.stats.jours) res.stats.jours = {};
+    if (!Array.isArray(res.stats.sessions)) res.stats.sessions = [];
+    for (const f of res.flashcards) {
+      if (!f.sr) f.sr = Revision.nouvelEtat();
+      if (!f.source) f.source = 'manuel';
+      if (f.argumentId === undefined) f.argumentId = null;
+      if (f.rattachement === undefined) f.rattachement = null;
+    }
     for (const a of res.arguments) {
       for (const champ of ['exemples', 'citations', 'rattachements', 'motsCles', 'pays', 'dates']) {
         if (!Array.isArray(a[champ])) a[champ] = [];
