@@ -19,7 +19,8 @@ const Stockage = {
       themes: Demo.themesInitiaux(),
       arguments: Demo.argumentsDemo(),
       flashcards: [],      // étape 3
-      plans: [],           // étape 4
+      plans: [],           // étape 4 : plans de dissertation
+      synonymes: Demo.synonymesInitiaux(), // étape 4 : recherche de l'aide au plan
       stats: { jours: {}, sessions: [] },
       paysPerso: [],
       reglages: {
@@ -75,6 +76,8 @@ const Stockage = {
     if (!res.stats || typeof res.stats !== 'object' || Array.isArray(res.stats)) res.stats = {};
     if (!res.stats.jours) res.stats.jours = {};
     if (!Array.isArray(res.stats.sessions)) res.stats.sessions = [];
+    if (!Array.isArray(res.synonymes)) res.synonymes = Demo.synonymesInitiaux();
+    for (const p of res.plans) if (!Array.isArray(p.parties)) p.parties = [];
     for (const f of res.flashcards) {
       if (!f.sr) f.sr = Revision.nouvelEtat();
       if (!f.source) f.source = 'manuel';
@@ -237,6 +240,9 @@ const Stockage = {
           if (i === -1) { d[cle].push(U.copie(el)); bilan[cle]++; }
           else if ((el.modifieLe || '') > (d[cle][i].modifieLe || '')) { d[cle][i] = U.copie(el); bilan.misAJour++; }
         }
+      }
+      for (const ligne of donnees.synonymes || []) {
+        if (!d.synonymes.some((x) => U.norm(x) === U.norm(ligne))) d.synonymes.push(ligne);
       }
       for (const p of donnees.paysPerso || []) {
         if (!d.paysPerso.some((x) => x.nom === p.nom)) d.paysPerso.push(U.copie(p));

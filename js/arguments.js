@@ -224,13 +224,18 @@ Vues.arguments = {
 
   async supprimer(a) {
     const nbCartes = Stockage.donnees.flashcards.filter((c) => c.argumentId === a.id).length;
+    const plans = Stockage.donnees.plans.filter((p) => p.parties.some((pa) => pa.sousParties.some((sp) => sp.argumentIds.includes(a.id))));
     const ok = await confirmer(`<p>Supprimer définitivement cet argument ?</p><p class="muet">« ${U.esc(a.idee)} »</p>
-      ${nbCartes ? `<p>Les <strong>${U.pluriel(nbCartes, 'flashcard générée', 'flashcards générées')}</strong> à partir de cet argument seront aussi supprimées.</p>` : ''}`,
+      ${nbCartes ? `<p>Les <strong>${U.pluriel(nbCartes, 'flashcard générée', 'flashcards générées')}</strong> à partir de cet argument seront aussi supprimées.</p>` : ''}
+      ${plans.length ? `<p>Il sera aussi retiré de <strong>${U.pluriel(plans.length, 'plan')}</strong> de dissertation.</p>` : ''}`,
       { titre: 'Supprimer un argument', texteOk: 'Supprimer', danger: true });
     if (!ok) return false;
     Stockage.modifier((d) => {
       d.arguments = d.arguments.filter((x) => x.id !== a.id);
       d.flashcards = d.flashcards.filter((c) => c.argumentId !== a.id);
+      for (const p of d.plans) {
+        for (const pa of p.parties) for (const sp of pa.sousParties) sp.argumentIds = sp.argumentIds.filter((x) => x !== a.id);
+      }
     });
     toast('Argument supprimé.');
     App.rafraichir();
