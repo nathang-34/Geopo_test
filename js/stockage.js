@@ -27,6 +27,7 @@ const Stockage = {
         taille: 'normal',
         nouvellesParJour: 20,
         heureChangementJour: 4,
+        ordreRevision: 'melange', // 'melange' ou 'ordre'
       },
       meta: {
         creeLe: new Date().toISOString(),
