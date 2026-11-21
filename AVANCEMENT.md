@@ -17,7 +17,7 @@ Aucune installation, aucun serveur, aucune connexion Internet nécessaire.
 | 1 | Structure, thèmes et chapitres, banque d'arguments, sauvegarde et export | ✅ Terminée et validée |
 | 2 | Import JSON (vérification, aperçu, doublons) et prompt modèle pour Claude | ✅ Terminée et validée (testée avec un vrai cours) |
 | 3 | Flashcards, génération depuis les arguments, SM-2, session du jour, tableau de bord | ✅ Terminée et fusionnée (PR n°2) ; ajout du choix mélangé / dans l'ordre |
-| 4 | Aide au plan de dissertation (recherche par pertinence, plan I/II/III, export) | ⏳ À faire |
+| 4 | Aide au plan de dissertation (recherche par pertinence, plan I/II/III, export) | ✅ Terminée, à valider par l'utilisateur |
 | 5 | Bonus : mode colle, frise chronologique, carte du monde | ⏳ À faire |
 
 ## Décisions validées avec l'utilisateur
@@ -48,7 +48,7 @@ Aucune installation, aucun serveur, aucune connexion Internet nécessaire.
   - `js/demo.js` : thème et chapitres initiaux + 7 arguments de démonstration (`demo: true`).
   - `js/stockage.js` : objet `Stockage` (chargement, `modifier(fn)`, export, import, fusion, suppression de la démo).
   - `js/composants.js` : `ChampEtiquettes`, `ChampPays`, `ChampMotsCles`, `ArbreRattachements`, `optionsFiltreThemes`.
-  - Pages : `tableau.js`, `themes.js`, `arguments.js`, `sauvegarde.js`, `reglages.js`. Chaque page s'enregistre dans `Vues.<nom> = { rendre(el, params, opts) }`.
+  - Pages : `tableau.js`, `themes.js`, `arguments.js`, `flashcards.js`, `reviser.js`, `sauvegarde.js`, `reglages.js`, `importer.js`, `plans.js`. Chaque page s'enregistre dans `Vues.<nom> = { rendre(el, params, opts) }`.
   - `js/app.js` : démarrage, navigation, bandeau de rappel de sauvegarde. Les pages pas encore construites sont listées dans `PAGES_A_VENIR`.
 - Réorganisation des thèmes et chapitres animée (technique FLIP dans `Vues.themes.animer`, attribut `data-anim-id`), désactivée si Windows demande de réduire les animations.
 - Chaque affichage de page part d'un bloc HTML neuf (`App.nouvellePage()`), pour éviter d'accumuler les écouteurs d'événements.
@@ -75,7 +75,9 @@ Aucune installation, aucun serveur, aucune connexion Internet nécessaire.
     sr: { intervalle, facilite, repetitions, echeance: 'AAAA-MM-JJ'|null, echecs, revisions, derniereRevision },
     creeLe, modifieLe
   }],
-  plans: [],        // étape 4
+  plans: [{ id, sujet, problematique, introduction, conclusion,
+           parties: [{ id, titre, sousParties: [{ id, titre, notes, argumentIds: [] }] }], creeLe, modifieLe }],
+  synonymes: ["Chine, chinois, Pékin, RPC", ...],   // une ligne = un groupe de mots équivalents
   stats: { jours: { 'AAAA-MM-JJ': { revues, reussies, nouvelles, secondes, themes: { idTheme: [revues, reussies] } } },
            sessions: [{ debut, fin, revues, reussies, filtre, type }] },   // 100 dernières séances
   paysPerso: [{ nom }],
@@ -137,6 +139,7 @@ Format d'import prévu pour l'étape 2 (validé) : `{ format: "geopo-import", ve
 
 - Claude travaille sur la branche `claude/awesome-archimedes-mqnv5u`. L'utilisateur fusionne dans `main` (pull request) à chaque étape validée ; les étapes 1 et 2 sont fusionnées (PR n°1).
 - Après une fusion, repartir de `origin/main` avant de continuer.
+- Étape 4 : faite directement dans le dossier décompressé du ZIP sur le PC de l'utilisateur (`OneDrive/Bureau/.../GEOPO/Site/Geopo_test-main`, pas un dépôt Git). Fichiers à envoyer sur GitHub : `js/plans.js` (nouveau), `index.html`, `css/style.css`, `js/app.js`, `js/arguments.js`, `js/demo.js`, `js/stockage.js`, `AVANCEMENT.md`.
 
 ## Import par le dépôt (en plus du copier-coller)
 
@@ -149,9 +152,22 @@ Format d'import prévu pour l'étape 2 (validé) : `{ format: "geopo-import", ve
 
 Rendre le site accessible à d'autres utilisateurs, chacun avec sa propre sauvegarde. Piste naturelle : publier le site avec GitHub Pages. Les données restent dans le navigateur de chaque visiteur, donc chacun a déjà ses propres données ; la sauvegarde automatique fonctionne aussi en https. Le contenu de démo et le thème initial (`js/demo.js`) devront alors être pensés pour un nouvel utilisateur.
 
+## Étape 4 : plans de dissertation (`js/plans.js`)
+
+- **Recherche par pertinence** (`Pertinence.rechercher(sujet, { theme })`) :
+  - mots normalisés (accents et majuscules ignorés), mots vides retirés, racine simple (pluriels, -isme, -ique, -ation...) et correspondance par début de mot pour les mots d'au moins 5 lettres ;
+  - groupes de synonymes (`donnees.synonymes`, une ligne = un groupe, modifiable via le bouton « Synonymes de recherche » de la liste des plans, ou « 🔤 Synonymes » dans la colonne de recherche de l'éditeur) ; les expressions de plusieurs mots (« guerre froide ») sont reconnues en premier ;
+  - poids par champ : idée 3, mots-clés 3, pays (avec alias de `pays.js`) 2,5, nom du chapitre ou thème 2, explication / citations / exemples / dates 1 ; une notion rare dans la banque compte plus (log(1 + N / nb d'arguments qui la contiennent)) ; bonus si l'argument couvre plusieurs notions du sujet ;
+  - deux années ou plus dans le sujet = une période (« 1945-1991 ») : bonus si l'argument cite une année dans la période, léger malus s'il ne cite que des années hors période.
+- **Page Plans** : liste des plans (dupliquer, supprimer), éditeur `#/plans?id=...` :
+  - sujet, problématique, introduction et conclusion (notes), parties I, II, III... avec sous-parties A, B... (titre + notes) ; 3 parties de 2 sous-parties au départ ; flèches pour réordonner, ✕ pour retirer (confirmation si non vide) ;
+  - colonne de droite : arguments classés par pertinence (jauge, notions trouvées, « ✓ I.A » si déjà placé), recherche pour affiner, filtre par thème, option « masquer les arguments déjà placés » ;
+  - ajout par le bouton ＋ (dans la sous-partie active, bordure dorée, choisie d'un clic) ou par glisser-déposer ; les arguments placés se déplacent par glisser-déposer ou flèches (au bord d'une sous-partie, la flèche le fait passer dans la voisine) ; clic sur l'idée = fiche de l'argument ;
+  - enregistrement automatique (0,7 s après la frappe, immédiat pour les changements de structure, et à la fermeture de l'onglet).
+- **Export** : aperçu texte avec options (exemples et citations, explications, notes), bouton Copier, fichier `.txt`, Imprimer / PDF (zone `#impression` + classe `html.impression` et styles `@media print`).
+- Supprimer un argument le retire aussi des plans (signalé dans la confirmation).
+- Tests : le navigateur intégré de Claude n'ouvre pas les `file://` ; tests faits avec un petit serveur PowerShell (`HttpListener`) car ni Python ni Node ne sont installés sur ce PC.
+
 ## Prochaine étape
 
-**Étape 4 : aide au plan de dissertation.**
-- Saisie d'un sujet ; recherche dans la banque par pertinence (mots-clés, chapitres, texte, accents ignorés, liste de synonymes modifiable : Chine ~ chinois, Pékin, RPC).
-- Construction d'un plan en I / II / III avec sous-parties, en y rangeant les arguments choisis.
-- Sauvegarde des plans (`plans`), consultation ultérieure, export : copier (texte), fichier `.txt`, impression / PDF, avec exemples et citations.
+**Étape 5 (bonus)** : mode colle, frise chronologique (dates des arguments), carte du monde (champ `pays` et `actuels` des entités historiques).

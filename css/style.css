@@ -386,3 +386,88 @@ kbd { font-family: inherit; font-size: 0.72rem; border: 1px solid var(--bordure)
   .boutons-notes { grid-template-columns: repeat(2, 1fr); }
   .carte-revision { padding: 18px; }
 }
+
+/* ---------- Plans de dissertation ---------- */
+.plan-resume-haut { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.plan-resume h3 { margin-bottom: 4px; }
+.plan-resume p { margin: 4px 0; }
+.plan-editeur { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 20px; align-items: start; }
+.plan-recherche { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+.plan-recherche h2 { font-size: 1.1rem; margin: 0; }
+.recherche-entete { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.plan-recherche .champ { margin-bottom: 10px; }
+.champ-sujet { min-height: 0; font-size: 1.05rem; font-weight: 600; }
+.plan-colonne textarea { min-height: 0; }
+.plan-colonne details summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; }
+label.case { display: flex; gap: 8px; align-items: center; font-weight: normal; cursor: pointer; margin: 0 0 8px; }
+label.case input { width: auto; }
+
+.partie { padding: 14px 16px; }
+.partie-entete, .sp-entete { display: flex; align-items: center; gap: 8px; }
+.partie-entete { margin-bottom: 10px; }
+.partie-entete input { font-weight: 700; font-size: 1rem; }
+.numero { font-weight: 700; color: var(--accent); min-width: 2.2em; }
+.outils { display: flex; gap: 0; flex-shrink: 0; }
+.outils .btn { padding: 2px 6px; min-width: 26px; }
+.sous-partie {
+  border: 1px solid var(--bordure);
+  border-left: 3px solid var(--bordure);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0 0 10px 14px;
+  background: var(--surface-2);
+  transition: border-color 0.15s;
+}
+.sous-partie.active { border-left-color: var(--accent); }
+.sous-partie.survol { border-color: var(--accent-2); border-left-color: var(--accent-2); }
+.sous-partie .numero { color: var(--accent-2); min-width: 1.6em; }
+.sp-notes { margin-top: 8px; font-size: 0.88rem; resize: none; overflow: hidden; padding: 6px 10px; }
+.sp-args { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.zone-depot { font-size: 0.82rem; color: var(--texte-doux); text-align: center; border: 1px dashed var(--bordure); border-radius: 8px; padding: 8px; }
+.zone-depot:empty { padding: 3px; border-color: transparent; }
+.sous-partie.survol .zone-depot { border-color: var(--accent-2); }
+.arg-plan {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+  padding: 7px 8px;
+  border-top: 2px solid transparent;
+}
+.arg-plan.inserer-avant { border-top-color: var(--accent-2); }
+.arg-plan.glisse, .resultat.glisse { opacity: 0.45; }
+.arg-texte { flex: 1; min-width: 0; font-size: 0.92rem; }
+.arg-texte a, .resultat a { color: var(--texte); text-decoration: none; }
+.arg-texte a:hover, .resultat a:hover { color: var(--accent); text-decoration: underline; }
+.poignee { cursor: grab; color: var(--texte-doux); user-select: none; padding-top: 1px; }
+
+.destination { font-size: 0.85rem; background: var(--surface-2); border-radius: 8px; padding: 7px 10px; margin: 6px 0 8px; }
+.resultat { border-top: 1px solid var(--bordure); padding: 10px 2px; cursor: grab; font-size: 0.92rem; }
+.resultat.place a { color: var(--texte-doux); }
+.resultat-haut { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.jauge-pertinence { flex: 1; max-width: 140px; height: 6px; background: var(--surface-3); border-radius: 999px; overflow: hidden; }
+.jauge-pertinence > div { height: 100%; background: var(--accent-2); border-radius: 999px; }
+.chip-trouve { background: rgba(79, 193, 181, 0.12); color: var(--accent-2); font-size: 0.72rem; }
+.chip-place { background: rgba(92, 201, 138, 0.16); color: var(--succes); font-size: 0.72rem; font-weight: 600; }
+.apercu-export { font-family: Consolas, "Courier New", monospace; font-size: 0.85rem; white-space: pre-wrap; min-height: 300px; }
+
+@media (max-width: 1000px) {
+  .plan-editeur { grid-template-columns: 1fr; }
+  .plan-recherche { position: static; max-height: none; }
+  .sous-partie { margin-left: 0; }
+}
+
+/* ---------- Impression d'un plan ---------- */
+#impression { display: none; }
+@media print {
+  html.impression body > *:not(#impression) { display: none !important; }
+  html.impression body { background: #fff; color: #000; }
+  html.impression #impression { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 11pt; line-height: 1.45; color: #000; }
+  #impression h1 { font-size: 16pt; margin-bottom: 8pt; }
+  #impression h2 { font-size: 13pt; margin: 14pt 0 4pt; }
+  #impression h3 { font-size: 11.5pt; margin: 10pt 0 3pt 12pt; }
+  #impression .imp-notes { margin-left: 12pt; font-style: italic; }
+  #impression .imp-args { margin: 4pt 0 4pt 12pt; }
+  #impression li { margin-bottom: 3pt; }
+  #impression h2, #impression h3 { break-after: avoid; }
+}

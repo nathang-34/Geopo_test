@@ -6,7 +6,6 @@
 
 /* Pages prévues pour les étapes suivantes */
 const PAGES_A_VENIR = {
-  plans: { titre: '📝 Plans de dissertation', etape: 4, texte: 'L\'aide au plan de dissertation arrivera à l\'étape 4.' },
 };
 
 const SEUIL_JOURS_RAPPEL = 3;

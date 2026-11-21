@@ -167,4 +167,30 @@ const Demo = {
       ...a,
     }));
   },
+
+  /**
+   * Liste de synonymes de départ pour la recherche de l'aide au plan.
+   * Une ligne = un groupe de mots équivalents (modifiable dans la page Plans).
+   */
+  synonymesInitiaux() {
+    return [
+      'Chine, chinois, chinoise, Pékin, RPC, République populaire de Chine',
+      'États-Unis, américain, américaine, Washington, USA',
+      'URSS, soviétique, Union soviétique, Moscou',
+      'Russie, russe, Kremlin',
+      'Royaume-Uni, britannique, Londres, Angleterre, anglais',
+      'France, français, française, Paris',
+      'Allemagne, allemand, allemande, Berlin, RFA, RDA, Reich',
+      'Japon, japonais, japonaise, Tokyo',
+      'Europe, européen, européenne, CEE, Union européenne',
+      'guerre froide, bipolarisation, bipolaire, endiguement, containment, rideau de fer',
+      'décolonisation, indépendance, indépendances, décolonisé',
+      'colonisation, colonie, colonial, impérialisme, empire colonial',
+      'Tiers-Monde, non-alignement, non-alignés, Sud',
+      'mondialisation, globalisation, échanges internationaux, commerce mondial',
+      'puissance, hégémonie, superpuissance, leadership, domination',
+      'ONU, Nations unies, multilatéralisme',
+      'nucléaire, atomique, dissuasion',
+    ];
+  },
 };
