@@ -205,9 +205,16 @@ Vues.arguments = {
         <div class="modal-pied">
           <button class="btn btn-danger" data-suppr>Supprimer</button>
           <button class="btn" data-dupliquer>Dupliquer</button>
+          <button class="btn" data-generer>🃏 Générer des flashcards</button>
           <button class="btn btn-principal" data-modifier>Modifier</button>
         </div>`,
     });
+    const nbCartes = Stockage.donnees.flashcards.filter((c) => c.argumentId === a.id).length;
+    if (nbCartes) {
+      m.corps.querySelector('.fiche').insertAdjacentHTML('beforeend',
+        `<p class="petit"><a href="#/flashcards?argument=${a.id}">🃏 ${U.pluriel(nbCartes, 'flashcard liée', 'flashcards liées')} à cet argument</a></p>`);
+    }
+    m.corps.querySelector('[data-generer]').addEventListener('click', () => { m.fermer(true); Flashcards.ouvrirGeneration(a); });
     m.corps.querySelector('[data-modifier]').addEventListener('click', () => { m.fermer(true); this.ouvrirFormulaire(a); });
     m.corps.querySelector('[data-dupliquer]').addEventListener('click', () => { m.fermer(true); this.ouvrirFormulaire(a, { copie: true }); });
     m.corps.querySelector('[data-suppr]').addEventListener('click', async () => {
@@ -216,10 +223,15 @@ Vues.arguments = {
   },
 
   async supprimer(a) {
-    const ok = await confirmer(`<p>Supprimer définitivement cet argument ?</p><p class="muet">« ${U.esc(a.idee)} »</p>`,
+    const nbCartes = Stockage.donnees.flashcards.filter((c) => c.argumentId === a.id).length;
+    const ok = await confirmer(`<p>Supprimer définitivement cet argument ?</p><p class="muet">« ${U.esc(a.idee)} »</p>
+      ${nbCartes ? `<p>Les <strong>${U.pluriel(nbCartes, 'flashcard générée', 'flashcards générées')}</strong> à partir de cet argument seront aussi supprimées.</p>` : ''}`,
       { titre: 'Supprimer un argument', texteOk: 'Supprimer', danger: true });
     if (!ok) return false;
-    Stockage.modifier((d) => { d.arguments = d.arguments.filter((x) => x.id !== a.id); });
+    Stockage.modifier((d) => {
+      d.arguments = d.arguments.filter((x) => x.id !== a.id);
+      d.flashcards = d.flashcards.filter((c) => c.argumentId !== a.id);
+    });
     toast('Argument supprimé.');
     App.rafraichir();
     return true;

@@ -35,13 +35,36 @@ Vues.reglages = {
 
       <div class="carte">
         <h2>Révision</h2>
-        <p class="muet">Les réglages de la répétition espacée (nouvelles cartes par jour, heure de changement de jour) arriveront à l'étape 3.</p>
+        <div class="champ">
+          <label>Nouvelles cartes par jour <span class="aide">(cartes jamais vues ajoutées à chaque séance du jour ; 20 par défaut)</span></label>
+          <input type="number" min="0" max="500" data-num="nouvellesParJour" value="${r.nouvellesParJour}" style="max-width:140px">
+        </div>
+        <div class="champ">
+          <label>Heure de changement de jour <span class="aide">(comme Anki : à 4 h, une révision à 1 h du matin compte pour la veille)</span></label>
+          <input type="number" min="0" max="12" data-num="heureChangementJour" value="${r.heureChangementJour}" style="max-width:140px"> <span class="muet petit">h</span>
+        </div>
+        <p class="muet petit">Une carte est « maîtrisée » quand son intervalle de révision atteint ${SEUIL_MAITRISE} jours.</p>
+        <button class="btn btn-danger btn-petit" data-effacer-stats>Effacer les statistiques de révision</button>
       </div>
     `;
     el.querySelectorAll('[data-r]').forEach((s) => s.addEventListener('change', () => {
       Stockage.reglage(s.dataset.r, s.value);
       App.appliquerApparence();
     }));
+    el.querySelectorAll('[data-num]').forEach((champ) => champ.addEventListener('change', () => {
+      const max = Number(champ.max);
+      const v = Math.min(max, Math.max(0, Math.round(Number(champ.value) || 0)));
+      champ.value = v;
+      Stockage.reglage(champ.dataset.num, v);
+      toast('Réglage enregistré.');
+      App.majBadgeReviser();
+    }));
+    el.querySelector('[data-effacer-stats]').addEventListener('click', async () => {
+      const ok = await confirmer("<p>Effacer l'historique des séances, la série de jours et les taux de réussite ?</p><p class=\"muet\">Les flashcards et leur planification sont conservées.</p>", { texteOk: 'Effacer', danger: true });
+      if (!ok) return;
+      Stats.effacer();
+      toast('Statistiques effacées.');
+    });
     el.querySelectorAll('[data-suppr-perso]').forEach((b) => b.addEventListener('click', () => {
       const i = Number(b.dataset.supprPerso);
       Stockage.modifier((d) => d.paysPerso.splice(i, 1));
