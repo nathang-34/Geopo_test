@@ -164,7 +164,7 @@ Vues.importer = {
         },
       ],
       flashcards: flashcards ? [
-        { recto: "Qu'est-ce que la « bipolarisation » du monde après 1945 ?", verso: "L'organisation du monde autour de deux superpuissances rivales, les États-Unis et l'URSS, chacune à la tête d'un bloc.", chapitre: premierChapitre },
+        { recto: "Qu'est-ce que la « bipolarisation » du monde après 1945 ?", verso: "L'organisation du monde autour de deux superpuissances rivales, les États-Unis et l'URSS, chacune à la tête d'un bloc.", chapitre: premierChapitre, type: 'autre' },
       ] : [],
     };
 
@@ -196,7 +196,8 @@ ${cible ? `\nCe cours correspond au chapitre "${cible.nom}" (thème « ${cible.t
 ${flashcards ? `10. FLASHCARDS (champ "flashcards") : des cartes de cours sur les définitions de notions, les dates clés, les acteurs, les causes et conséquences.
    - "recto" : une question précise et autonome, compréhensible sans contexte ;
    - "verso" : une réponse courte (1 à 3 lignes) ;
-   - "chapitre" : un nom de ma liste, recopié exactement.
+   - "chapitre" : un nom de ma liste, recopié exactement ;
+   - "type" : "date" (la réponse est une date), "citation", "chiffre" ou "autre" (notion, acteur, cause...).
    Ne fais PAS de cartes sur les chiffres et citations déjà présents dans les arguments : mon site les crée automatiquement.
 ` : ''}
 ## Mes thèmes et chapitres actuels
@@ -389,6 +390,8 @@ Après le bloc JSON (en dehors du bloc), ajoute une courte liste :
       const el = { type: 'flashcard', index: i, erreurs: [], avertissements: [], rattachements: [], chapitresInconnus: [] };
       const texte = (v) => (typeof v === 'string' ? v.trim() : (v === undefined || v === null ? '' : String(v).trim()));
       const p = { recto: texte(brut && brut.recto), verso: texte(brut && brut.verso) };
+      const typeBrut = U.norm(brut && brut.type);
+      if (TYPES_CARTE[typeBrut]) p.type = typeBrut;
       if (!p.recto) el.erreurs.push('Le recto est vide.');
       if (!p.verso) el.erreurs.push('Le verso est vide.');
       const ch = brut && (brut.chapitre ?? brut.chapitres);
@@ -632,7 +635,7 @@ Après le bloc JSON (en dehors du bloc), ajoute une courte liste :
       }
       // 3. Flashcards
       for (const x of choisisC) {
-        d.flashcards.push({ id: U.uid(), recto: x.propre.recto, verso: x.propre.verso, rattachement: rattachements(x)[0] || null, argumentId: null, source: 'import', creeLe: maintenant, modifieLe: maintenant });
+        d.flashcards.push({ id: U.uid(), recto: x.propre.recto, verso: x.propre.verso, rattachement: rattachements(x)[0] || null, argumentId: null, source: 'import', ...(x.propre.type ? { type: x.propre.type } : {}), creeLe: maintenant, modifieLe: maintenant });
         bilan.cartes++;
       }
     });

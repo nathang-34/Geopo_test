@@ -7,8 +7,18 @@
    { id, recto, verso, rattachement (id thème/chapitre ou null),
      argumentId (ou null), cle (pour les cartes générées),
      source: 'manuel' | 'argument' | 'import', demo?, sr: {...},
+     type?: 'date' | 'citation' | 'chiffre' | 'autre' (choisi à la main ;
+     sinon déduit de la clé ou du texte, voir Flashcards.type),
      creeLe, modifieLe }
    ========================================================= */
+
+/* Types de cartes (pour réviser seulement les dates, les citations...) */
+const TYPES_CARTE = {
+  date: { texte: 'Dates', icone: '📅' },
+  citation: { texte: 'Citations', icone: '💬' },
+  chiffre: { texte: 'Chiffres', icone: '🔢' },
+  autre: { texte: 'Notions et autres', icone: '🃏' },
+};
 
 const LIBELLES_CATEGORIE = {
   nouvelle: { texte: 'Nouvelle', style: 'background:rgba(79,193,181,.16); color:var(--accent-2)' },
@@ -20,8 +30,38 @@ const LIBELLES_CATEGORIE = {
 const Flashcards = {
   /* ---------------- Outils ---------------- */
 
-  /** Une carte correspond-elle au filtre thème/chapitre ? ('' = tout, '__aucun' = non classées) */
-  correspond(carte, filtre) {
+  /**
+   * Type d'une carte : choisi à la main (carte.type), sinon déduit
+   * de la clé des cartes générées, sinon deviné d'après le texte.
+   */
+  type(carte) {
+    if (carte.type && TYPES_CARTE[carte.type]) return carte.type;
+    return this.typeDevine(carte);
+  },
+
+  typeDevine(carte) {
+    const genre = String(carte.cle || '').split('|')[0];
+    if (genre === 'date') return 'date';
+    if (genre.startsWith('citation')) return 'citation';
+    if (genre === 'chiffre') return 'chiffre';
+    const recto = U.norm(carte.recto);
+    const versoBrut = String(carte.verso || '').replace(/\*\*|\*/g, '').trim();
+    const verso = U.norm(versoBrut);
+    // Citation : « Qui a dit... », ou recto / verso entre guillemets
+    if (/\bqui a (dit|ecrit|declare|prononce)\b/.test(recto) || /^[«"“]/.test(String(carte.recto).trim()) || /^[«"“]/.test(versoBrut)) return 'citation';
+    // Date : question « quand / en quelle année », ou réponse courte qui est une date
+    if (/^(quand|en quelle annee|a quelle date|quelle (est la )?date|de quand)\b/.test(recto)) return 'date';
+    if (verso.length <= 45 && typeof Chrono !== 'undefined' && Chrono.analyser(verso)
+      && !/\d\s*(%|millions?|milliards?|km|habitants|dollars|\$|€)/.test(verso)) return 'date';
+    // Chiffre : « combien », pourcentage, millions...
+    if (/^(combien|quel(le)? (est|etait) (le|la) (part|nombre|montant|taux|population|pourcentage))\b/.test(recto)
+      || (verso.length <= 80 && /\d[\d\s,.]*\s*(%|millions?|milliards?|km|habitants|dollars|\$|€)/.test(verso))) return 'chiffre';
+    return 'autre';
+  },
+
+  /** Une carte correspond-elle au filtre thème/chapitre ? ('' = tout, '__aucun' = non classées) et aux types choisis */
+  correspond(carte, filtre, types = null) {
+    if (types && !types.includes(this.type(carte))) return false;
     if (!filtre) return true;
     const r = carte.rattachement ? Stockage.rattachement(carte.rattachement) : null;
     if (filtre === '__aucun') return !r;
@@ -37,9 +77,9 @@ const Flashcards = {
    * - dues : cartes déjà vues dont l'échéance est arrivée ;
    * - nouvelles : cartes jamais vues, dans la limite quotidienne.
    */
-  fileDuJour(filtre = '') {
+  fileDuJour(filtre = '', types = null) {
     const jour = Revision.jour();
-    const cartes = Stockage.donnees.flashcards.filter((c) => this.correspond(c, filtre));
+    const cartes = Stockage.donnees.flashcards.filter((c) => this.correspond(c, filtre, types));
     const dues = cartes.filter((c) => Revision.estDue(c, jour)).sort((a, b) => a.sr.echeance.localeCompare(b.sr.echeance));
     const toutesNouvelles = cartes.filter((c) => Revision.estNouvelle(c)).sort((a, b) => (a.creeLe || '').localeCompare(b.creeLe || ''));
     const limite = Number(Stockage.donnees.reglages.nouvellesParJour) || 0;
@@ -202,6 +242,13 @@ const Flashcards = {
             <label>Thème / chapitre</label>
             <select name="rattachement">${this.optionsRattachement(c.rattachement || '')}</select>
           </div>
+          <div class="champ">
+            <label>Type <span class="aide">(pour réviser seulement les dates, les citations...)</span></label>
+            <select name="type">
+              <option value="">Automatique${carte ? ` (détecté : ${TYPES_CARTE[this.typeDevine(carte)].texte.toLowerCase()})` : ''}</option>
+              ${Object.entries(TYPES_CARTE).map(([k, v]) => `<option value="${k}" ${c.type === k ? 'selected' : ''}>${v.icone} ${v.texte}</option>`).join('')}
+            </select>
+          </div>
           ${arg ? `<p class="muet petit">Liée à l'argument : « ${U.esc(arg.idee)} »</p>` : ''}
           <div class="modal-pied">
             <button type="button" class="btn" data-annuler>Annuler</button>
@@ -214,7 +261,7 @@ const Flashcards = {
       },
     });
     const form = m.corps.querySelector('[data-form]');
-    const lire = () => JSON.stringify([form.recto.value.trim(), form.verso.value.trim(), form.rattachement.value]);
+    const lire = () => JSON.stringify([form.recto.value.trim(), form.verso.value.trim(), form.rattachement.value, form.type.value]);
     initial = lire();
     form.querySelector('[data-annuler]').addEventListener('click', () => m.fermer());
     form.addEventListener('submit', (e) => {
@@ -224,9 +271,11 @@ const Flashcards = {
       if (!recto) { toast('Le recto est obligatoire.', 'erreur'); form.recto.focus(); return; }
       if (!verso) { toast('Le verso est obligatoire.', 'erreur'); form.verso.focus(); return; }
       const ratt = form.rattachement.value || null;
+      const type = form.type.value || null;
       Stockage.modifier((d) => {
-        if (nouvelle) this.ajouter(d, { recto, verso, rattachement: ratt });
-        else Object.assign(d.flashcards.find((x) => x.id === carte.id), { recto, verso, rattachement: ratt, modifieLe: new Date().toISOString() });
+        const c2 = nouvelle ? this.ajouter(d, { recto, verso, rattachement: ratt }) : d.flashcards.find((x) => x.id === carte.id);
+        if (!nouvelle) Object.assign(c2, { recto, verso, rattachement: ratt, modifieLe: new Date().toISOString() });
+        if (c2) { if (type) c2.type = type; else delete c2.type; }
       });
       m.fermer(true);
       toast(nouvelle ? 'Flashcard créée.' : 'Flashcard enregistrée.');
@@ -291,12 +340,12 @@ const Flashcards = {
    La page « Flashcards »
    ========================================================= */
 Vues.flashcards = {
-  filtres: { theme: '', etat: '', source: '', texte: '', argument: '' },
+  filtres: { theme: '', etat: '', source: '', texte: '', argument: '', type: '' },
   limite: 100,
 
   rendre(el, params = {}, opts = {}) {
     if (!opts.rafraichissement) {
-      if (params.argument !== undefined) this.filtres = { theme: '', etat: '', source: '', texte: '', argument: params.argument };
+      if (params.argument !== undefined) this.filtres = { theme: '', etat: '', source: '', texte: '', argument: params.argument, type: '' };
       if (params.filtre !== undefined) this.filtres.theme = params.filtre;
       if (params.etat !== undefined) this.filtres.etat = params.etat;
       this.limite = 100;
@@ -333,6 +382,11 @@ Vues.flashcards = {
               <option value="">Tous</option>
               ${Object.entries(LIBELLES_CATEGORIE).map(([k, v]) => `<option value="${k}" ${f.etat === k ? 'selected' : ''}>${v.texte}</option>`).join('')}
             </select></div>
+          <div class="champ"><label>Type</label>
+            <select data-f="type">
+              <option value="">Tous</option>
+              ${Object.entries(TYPES_CARTE).map(([k, v]) => `<option value="${k}" ${f.type === k ? 'selected' : ''}>${v.icone} ${v.texte}</option>`).join('')}
+            </select></div>
           <div class="champ"><label>Origine</label>
             <select data-f="source">
               <option value="">Toutes</option>
@@ -355,7 +409,7 @@ Vues.flashcards = {
       this.limite = 100;
       this.dessinerListe(el);
     }));
-    el.querySelector('[data-reinit]').addEventListener('click', () => { this.filtres = { theme: '', etat: '', source: '', texte: '', argument: '' }; App.aller('flashcards'); });
+    el.querySelector('[data-reinit]').addEventListener('click', () => { this.filtres = { theme: '', etat: '', source: '', texte: '', argument: '', type: '' }; App.aller('flashcards'); });
     const sansArg = el.querySelector('[data-sans-arg]');
     if (sansArg) sansArg.addEventListener('click', () => { this.filtres.argument = ''; App.aller('flashcards'); });
     el.querySelector('[data-liste]').addEventListener('click', (e) => {
@@ -372,6 +426,7 @@ Vues.flashcards = {
     let liste = Stockage.donnees.flashcards.filter((c) => Flashcards.correspond(c, f.theme));
     if (f.argument) liste = liste.filter((c) => c.argumentId === f.argument);
     if (f.etat) liste = liste.filter((c) => Revision.categorie(c, jour) === f.etat);
+    if (f.type) liste = liste.filter((c) => Flashcards.type(c) === f.type);
     if (f.source === 'demo') liste = liste.filter((c) => c.demo);
     else if (f.source) liste = liste.filter((c) => (c.source || 'manuel') === f.source);
     if (f.texte.trim()) {
@@ -404,6 +459,7 @@ Vues.flashcards = {
           <div class="petit" style="margin-top:4px">
             ${c.demo ? '<span class="chip chip-demo">Démo</span>' : ''}
             ${r ? `<span class="chip chip-theme">${U.esc(r.nom)}</span>` : '<span class="chip">Non classée</span>'}
+            <span class="chip">${TYPES_CARTE[Flashcards.type(c)].icone} ${TYPES_CARTE[Flashcards.type(c)].texte}</span>
             ${c.argumentId ? '<span class="chip">🔗 argument</span>' : ''}
             <span class="muet">${Revision.libelleEcheance(c, jour)}</span>
           </div>

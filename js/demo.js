@@ -168,6 +168,18 @@ const Demo = {
     }));
   },
 
+  /** Quelques sujets de colle de démonstration (étape 5) */
+  sujetsColleDemo() {
+    const maintenant = new Date().toISOString();
+    return [
+      ['ch-1913', "L'Europe, centre du monde en 1913 ?"],
+      ['ch-1939', 'Le monde en 1939 : un ordre international en ruine ?'],
+      ['ch-1945', 'Le monde en 1945 : la fin de la domination européenne ?'],
+      ['ch-gf', 'Guerre froide et décolonisation (1945-1991) : deux processus liés ?'],
+      ['ch-gf', "Les États-Unis et l'URSS face au Tiers-Monde"],
+    ].map(([rattachement, texte], i) => ({ id: 'colle-demo-' + (i + 1), texte, rattachement, demo: true, creeLe: maintenant, modifieLe: maintenant }));
+  },
+
   /**
    * Liste de synonymes de départ pour la recherche de l'aide au plan.
    * Une ligne = un groupe de mots équivalents (modifiable dans la page Plans).
