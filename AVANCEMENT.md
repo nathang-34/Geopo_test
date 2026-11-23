@@ -18,7 +18,7 @@ Aucune installation, aucun serveur, aucune connexion Internet nécessaire.
 | 2 | Import JSON (vérification, aperçu, doublons) et prompt modèle pour Claude | ✅ Terminée et validée (testée avec un vrai cours) |
 | 3 | Flashcards, génération depuis les arguments, SM-2, session du jour, tableau de bord | ✅ Terminée et fusionnée (PR n°2) ; ajout du choix mélangé / dans l'ordre |
 | 4 | Aide au plan de dissertation (recherche par pertinence, plan I/II/III, export) | ✅ Terminée, à valider par l'utilisateur |
-| 5 | Bonus : mode colle, frise chronologique, carte du monde | ⏳ À faire |
+| 5 | Bonus : mode colle, chronologie (la frise graphique a été abandonnée), carte du monde | ✅ Construite ; chronologie, révision par type de cartes et carte à valider par l'utilisateur |
 
 ## Décisions validées avec l'utilisateur
 
@@ -48,7 +48,7 @@ Aucune installation, aucun serveur, aucune connexion Internet nécessaire.
   - `js/demo.js` : thème et chapitres initiaux + 7 arguments de démonstration (`demo: true`).
   - `js/stockage.js` : objet `Stockage` (chargement, `modifier(fn)`, export, import, fusion, suppression de la démo).
   - `js/composants.js` : `ChampEtiquettes`, `ChampPays`, `ChampMotsCles`, `ArbreRattachements`, `optionsFiltreThemes`.
-  - Pages : `tableau.js`, `themes.js`, `arguments.js`, `flashcards.js`, `reviser.js`, `sauvegarde.js`, `reglages.js`, `importer.js`, `plans.js`. Chaque page s'enregistre dans `Vues.<nom> = { rendre(el, params, opts) }`.
+  - Pages : `tableau.js`, `themes.js`, `arguments.js`, `flashcards.js`, `reviser.js`, `sauvegarde.js`, `reglages.js`, `importer.js`, `plans.js`, `colle.js`, `chronologie.js`, `carte.js` (précédé de `carte-donnees.js`). Chaque page s'enregistre dans `Vues.<nom> = { rendre(el, params, opts) }`.
   - `js/app.js` : démarrage, navigation, bandeau de rappel de sauvegarde. Les pages pas encore construites sont listées dans `PAGES_A_VENIR`.
 - Réorganisation des thèmes et chapitres animée (technique FLIP dans `Vues.themes.animer`, attribut `data-anim-id`), désactivée si Windows demande de réduire les animations.
 - Chaque affichage de page part d'un bloc HTML neuf (`App.nouvellePage()`), pour éviter d'accumuler les écouteurs d'événements.
@@ -75,13 +75,17 @@ Aucune installation, aucun serveur, aucune connexion Internet nécessaire.
     sr: { intervalle, facilite, repetitions, echeance: 'AAAA-MM-JJ'|null, echecs, revisions, derniereRevision },
     creeLe, modifieLe
   }],
+  sujetsColle: [{ id, texte, rattachement, demo?, creeLe, modifieLe }],   // étape 5
+  colles: [{ id, sujet, sujetId, planId, rattachement, date, dureePrepa, dureeOral, tempsPrepa, tempsOral,
+             brouillon, note, commentaire, argumentsProposes: [], argumentsUtilises: [], creeLe, modifieLe }],  // 200 dernières
   plans: [{ id, sujet, problematique, introduction, conclusion,
            parties: [{ id, titre, sousParties: [{ id, titre, notes, argumentIds: [] }] }], creeLe, modifieLe }],
   synonymes: ["Chine, chinois, Pékin, RPC", ...],   // une ligne = un groupe de mots équivalents
   stats: { jours: { 'AAAA-MM-JJ': { revues, reussies, nouvelles, secondes, themes: { idTheme: [revues, reussies] } } },
            sessions: [{ debut, fin, revues, reussies, filtre, type }] },   // 100 dernières séances
   paysPerso: [{ nom }],
-  reglages: { theme: 'sombre'|'clair', taille: 'normal'|'grand', nouvellesParJour: 20, heureChangementJour: 4 },
+  reglages: { theme: 'sombre'|'clair', taille: 'normal'|'grand', nouvellesParJour: 20, heureChangementJour: 4,
+              ordreRevision: 'melange'|'ordre', collePrepa: 20, colleOral: 10 },
   meta: { creeLe, derniereSauvegarde, modifsDepuisSauvegarde }
 }
 ```
@@ -168,6 +172,57 @@ Rendre le site accessible à d'autres utilisateurs, chacun avec sa propre sauveg
 - Supprimer un argument le retire aussi des plans (signalé dans la confirmation).
 - Tests : le navigateur intégré de Claude n'ouvre pas les `file://` ; tests faits avec un petit serveur PowerShell (`HttpListener`) car ni Python ni Node ne sont installés sur ce PC.
 
+## Étape 5 : bonus
+
+Décisions validées : ordre mode colle, puis frise, puis carte, avec une validation de l'utilisateur entre chaque.
+
+### Mode colle (`js/colle.js`, page `#/colle`, menu « 🎤 Colle ») : fait
+
+- **Sujets** : liste `donnees.sujetsColle` rangée par thème ou chapitre (ajout d'un sujet, ou « Ajouter plusieurs sujets » : un par ligne, numéros et tirets retirés, doublons ignorés), avec en plus les sujets des plans (option cochée par défaut). Un plan correspond à un chapitre s'il contient au moins un argument de ce chapitre. 5 sujets de démo (`demo: true`, retirés avec la démo ; ajoutés aux données existantes seulement si la démo est encore là).
+- **Tirage** : au hasard parmi les sujets jamais tirés, sinon parmi la moitié tirée il y a le plus longtemps ; bouton « Un autre sujet » ; bouton ▶️ dans la liste pour choisir un sujet précis.
+- **Déroulé** : préparation 20 min puis oral 10 min par défaut (`reglages.collePrepa` / `colleOral`, réglables sur la page ; 0 = pas de compte à rebours, le temps passé est seulement mesuré). Minuteur basé sur l'heure réelle (juste même si on change de page), pause, orange à moins d'1 min, rouge avec « +0:40 » en cas de dépassement, trois bips (Web Audio, sans fichier) et une notification à la fin du temps. Brouillon pendant la préparation et l'oral. La colle en cours est gardée si on change de page (comme la séance de révision).
+- **Correction** : les 12 arguments les plus pertinents (`Pertinence.rechercher` de l'étape 4), dépliables (explication, exemples, citations), case « utilisé » pour chacun, note sur 20 facultative (virgule acceptée), commentaire, brouillon.
+- **Historique** (`donnees.colles`, 200 dernières) : nombre de colles, moyenne, 15 dernières ; clic = détail (arguments utilisés et non utilisés, brouillon), « Repasser ce sujet », « En faire un plan » (crée un plan avec le brouillon en introduction et les arguments utilisés en I.A), suppression.
+- « face » ajouté aux mots ignorés par la recherche par pertinence.
+- Fichiers modifiés : `js/colle.js` (nouveau), `index.html`, `css/style.css`, `js/stockage.js`, `js/demo.js`, `js/plans.js`, `AVANCEMENT.md`.
+
+### Chronologie (`js/chronologie.js`, page `#/chronologie`, menu « 🕰️ Chronologie ») : à valider
+
+- **Frise graphique abandonnée** à la demande de l'utilisateur (les dates proches s'empilaient, peu lisible) : `js/frise.js` supprimé, on ne garde que la liste. Ne pas reproposer de frise horizontale.
+- **Lecture des dates** (`Chrono.analyser(texte)` → `{ debut, fin, annee, periode }` en années décimales, ou `null`) : « 1913 », « 28 juin 1914 », « 1er septembre 1939 », « avril 1955 », « 28/06/1914 », « 1914-1918 », « 1914-18 », « 28 juin 1914 - 11 novembre 1918 », « de 1947 à 1991 », « du 6 juin au 25 août 1944 », « années 1960 ». Sans année sur 4 chiffres (« XIXe siècle »), la date est listée dans « dates non placées » avec un lien vers l'argument.
+- **Événements** : les dates des arguments (champ `dates` seulement, pas les dates des exemples chiffrés) ; même date et même intitulé dans plusieurs arguments = un seul événement (« ×2 »). Couleur de la bordure selon le premier chapitre de l'argument (8 couleurs, ordre de la page Thèmes, variables `--chrono-1` à `--chrono-8` et classes `.c0` à `.c8` pour les deux modes), légende.
+- **Filtres** : thème ou chapitre, pays ou acteur, recherche (intitulé, date ou idée de l'argument), années de / à. Adresse possible : `#/chronologie?filtre=ch-1913` ou `?pays=URSS`.
+- **Liste** par décennie, liens vers les arguments ; mode entraînement « masquer les dates » (ordre mélangé, bouton « Date ? » pour vérifier, compteur, Remélanger, Tout dévoiler).
+
+### Réviser par type de cartes (demandé par l'utilisateur) : à valider
+
+- `TYPES_CARTE` (`js/flashcards.js`) : `date`, `citation`, `chiffre`, `autre` (« Notions et autres »). `Flashcards.type(carte)` : `carte.type` s'il a été choisi à la main, sinon la clé des cartes générées (`date|…`, `citation-auteur|…`, `citation-texte|…`, `chiffre|…`), sinon une estimation d'après le texte (`typeDevine` : « Qui a dit », guillemets, « Quand / En quelle année », réponse courte qui est une date lue par `Chrono`, « Combien », %, millions...).
+- Page Réviser : cases « Types de cartes » (avec le nombre de cartes du jour par type), mémorisées dans `reglages.typesRevision` (`null` = tous). `Flashcards.correspond(carte, filtre, types)` et `fileDuJour(filtre, types)` prennent ce filtre ; il s'applique aussi à « Réviser en avance », « nouvelles cartes de plus » et « Continuer ». La pastille du menu compte toujours toutes les cartes.
+- Formulaire d'une flashcard : liste « Type » (« Automatique (détecté : ...) » ou un type imposé). Page Flashcards : filtre « Type » et étiquette du type sur chaque carte.
+- Import : champ facultatif `"type"` dans les flashcards (`date`, `citation`, `chiffre`, `autre`), demandé dans le prompt modèle.
+- Fichiers modifiés depuis la version avec frise : `js/chronologie.js` (nouveau), `js/frise.js` (supprimé), `index.html`, `css/style.css`, `js/flashcards.js`, `js/reviser.js`, `js/stockage.js`, `js/importer.js`, `AVANCEMENT.md`.
+
+### Carte du monde (`js/carte.js`, page `#/carte`, menu « 🗺️ Carte ») : à valider
+
+- **Fond de carte** : `js/carte-donnees.js` (533 Ko, fichier généré, `CARTE_DONNEES`), issu de `countries-50m.json` du paquet `world-atlas` 2.0.2 (Natural Earth 1:50m, domaine public), téléchargé une fois avec l'accord de l'utilisateur. Le site fonctionne sans Internet. 196 pays aux noms de `pays.js` ; Antarctique retiré ; territoires dépendants et Sahara occidental en gris neutre, non cliquables. Rattachements : Somaliland → Somalie, Chypre du Nord → Chypre, Hong Kong et Macao → Chine. Tuvalu, absent du fond, est un simple point (`MONDE_SANS_CONTOUR`).
+- **Dessin** : SVG, projection Natural Earth ; `couperAntimeridien` découpe à ±180° les contours qui traversent la ligne de changement de date (Russie, Fidji). Les très petits pays (moins de 4 unités) ont un point visible s'ils sont cités ou sélectionnés.
+- **Couleurs** : une seule teinte, seuils fixes 0 / 1 / 2-3 / 4-7 / 8 et + (variables `--monde-*` pour chaque mode).
+- **Comptage** (`compter`) : un argument compte une fois par pays ; une entité historique compte pour ses `actuels` (case à décocher) ; organisations, grands ensembles et acteurs personnalisés sont dans « Acteurs hors carte ».
+- **Interactions** : filtre thème ou chapitre, info-bulle, clic sur un pays = ses arguments (avec « via URSS »...), classement des pays à droite, zoom (molette ou boutons, jusqu'à ×14), déplacement à la souris, « Montrer l'emprise de » une entité historique. Adresse possible : `#/carte?pays=France` ou `?filtre=ch-1913`.
+- **Emprise** : affiche les pays actuels listés dans `ENTITES_HISTORIQUES` (`pays.js`), pas les frontières d'époque. Listes des empires complétées (ottoman, britannique, français, portugais) et nouveaux empires coloniaux espagnol, néerlandais, belge, italien et allemand.
+- Fichiers modifiés : `js/carte.js` et `js/carte-donnees.js` (nouveaux), `index.html`, `css/style.css`, `AVANCEMENT.md`.
+
+### Frontières historiques sur la carte (`js/carte-histoire.js`) : à valider
+
+- **Source** : CShapes 2.0 (ETH Zurich, 1886-2019), licence **CC BY-NC-SA 4.0** : crédit affiché sous la carte, usage non commercial, partage dans les mêmes conditions. Téléchargée une fois avec l'accord de l'utilisateur.
+- **Données** : `js/carte-frontieres.js` (485 Ko, fichier généré, `CARTE_FRONTIERES`), 710 unités datées, tracés simplifiés sans décaler les frontières communes. Chargé seulement au premier choix d'une date.
+- **Table rédigée pour le site** (`HISTOIRE_UNITES`, `HISTOIRE_NOMS`, `HISTOIRE_EMPIRES`) : nom français selon l'époque, pays actuels, empire de rattachement à l'année près. CShapes ne donne pas le propriétaire des colonies : **table à relire**. Les dominions comptent dans l'Empire britannique jusqu'en 1931.
+- **Page Carte** : curseur 1886-2019, dates repères (1886, 1913, 1919, 1939, 1945, 1962, 1991, Aujourd'hui), situation au 1er juillet, couleur par empire ou par nombre d'arguments, liste des empires et de leurs territoires, clic sur un territoire pour voir son statut et ses arguments.
+- **Couleurs** : 8 empires ont une couleur fixe ; les autres sont groupés en « Autres empires » (gris) et restent identifiables par la liste et l'info-bulle.
+- **Limites** : l'Anschluss et les occupations de 1939-1945 ne figurent pas dans CShapes (avertissement affiché pour 1938-1945). Pas de données après 2019 : « Aujourd'hui » utilise le fond Natural Earth.
+- Fichiers modifiés : `js/carte-histoire.js` et `js/carte-frontieres.js` (nouveaux), `js/carte.js`, `js/pays.js`, `index.html`, `css/style.css`, `AVANCEMENT.md`.
+
 ## Prochaine étape
 
-**Étape 5 (bonus)** : mode colle, frise chronologique (dates des arguments), carte du monde (champ `pays` et `actuels` des entités historiques).
+1. Validation de la chronologie, des types de cartes, de la carte et des frontières historiques par l'utilisateur.
+2. Relecture de la table des empires dans `js/carte-histoire.js`.

@@ -22,6 +22,8 @@ const Stockage = {
       plans: [],           // étape 4 : plans de dissertation
       synonymes: Demo.synonymesInitiaux(), // étape 4 : recherche de l'aide au plan
       stats: { jours: {}, sessions: [] },
+      sujetsColle: Demo.sujetsColleDemo(), // étape 5 : mode colle
+      colles: [],          // étape 5 : historique des colles
       paysPerso: [],
       reglages: {
         theme: 'sombre',
@@ -29,6 +31,9 @@ const Stockage = {
         nouvellesParJour: 20,
         heureChangementJour: 4,
         ordreRevision: 'melange', // 'melange' ou 'ordre'
+        typesRevision: null,      // null = tous les types de cartes, sinon ['date', 'citation'...]
+        collePrepa: 20,           // minutes de préparation en colle
+        colleOral: 10,            // minutes d'oral en colle
       },
       meta: {
         creeLe: new Date().toISOString(),
@@ -69,7 +74,7 @@ const Stockage = {
       reglages: { ...base.reglages, ...(d.reglages || {}) },
       meta: { ...base.meta, ...(d.meta || {}) },
     };
-    for (const cle of ['themes', 'arguments', 'flashcards', 'plans', 'paysPerso']) {
+    for (const cle of ['themes', 'arguments', 'flashcards', 'plans', 'paysPerso', 'colles']) {
       if (!Array.isArray(res[cle])) res[cle] = [];
     }
     for (const t of res.themes) if (!Array.isArray(t.chapitres)) t.chapitres = [];
@@ -77,6 +82,8 @@ const Stockage = {
     if (!res.stats.jours) res.stats.jours = {};
     if (!Array.isArray(res.stats.sessions)) res.stats.sessions = [];
     if (!Array.isArray(res.synonymes)) res.synonymes = Demo.synonymesInitiaux();
+    // Sujets de colle de démo seulement si la démo est encore là (données d'avant l'étape 5)
+    if (!Array.isArray(d.sujetsColle)) res.sujetsColle = (d.arguments || []).some((a) => a && a.demo) ? Demo.sujetsColleDemo() : [];
     for (const p of res.plans) if (!Array.isArray(p.parties)) p.parties = [];
     for (const f of res.flashcards) {
       if (!f.sr) f.sr = Revision.nouvelEtat();
@@ -154,7 +161,7 @@ const Stockage = {
   },
 
   aDeLaDemo() {
-    return this.donnees.arguments.some((a) => a.demo) || this.donnees.flashcards.some((f) => f.demo);
+    return this.donnees.arguments.some((a) => a.demo) || this.donnees.flashcards.some((f) => f.demo) || this.donnees.sujetsColle.some((s) => s.demo);
   },
 
   supprimerDemo() {
@@ -162,6 +169,7 @@ const Stockage = {
       d.arguments = d.arguments.filter((a) => !a.demo);
       d.flashcards = d.flashcards.filter((f) => !f.demo);
       d.plans = d.plans.filter((p) => !p.demo);
+      d.sujetsColle = d.sujetsColle.filter((s) => !s.demo);
     });
   },
 
@@ -225,7 +233,7 @@ const Stockage = {
    * Renvoie un petit bilan.
    */
   fusionnerAvec(donnees) {
-    const bilan = { themes: 0, chapitres: 0, arguments: 0, flashcards: 0, plans: 0, misAJour: 0 };
+    const bilan = { themes: 0, chapitres: 0, arguments: 0, flashcards: 0, plans: 0, sujetsColle: 0, colles: 0, misAJour: 0 };
     this.modifier((d) => {
       for (const t of donnees.themes) {
         const local = d.themes.find((x) => x.id === t.id);
@@ -234,7 +242,8 @@ const Stockage = {
           if (!local.chapitres.some((x) => x.id === c.id)) { local.chapitres.push(U.copie(c)); bilan.chapitres++; }
         }
       }
-      for (const cle of ['arguments', 'flashcards', 'plans']) {
+      for (const cle of ['arguments', 'flashcards', 'plans', 'sujetsColle', 'colles']) {
+        if (!Array.isArray(d[cle])) d[cle] = [];
         for (const el of donnees[cle] || []) {
           const i = d[cle].findIndex((x) => x.id === el.id);
           if (i === -1) { d[cle].push(U.copie(el)); bilan[cle]++; }
@@ -256,6 +265,7 @@ const Stockage = {
     const neuf = this.creerInitial();
     neuf.arguments = [];
     neuf.themes = [];
+    neuf.sujetsColle = [];
     neuf.reglages = this.donnees.reglages;
     this.donnees = neuf;
     this.ecrire();

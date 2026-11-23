@@ -14,7 +14,7 @@ const MOTS_VIDES_SUJET = new Set((
   'a au aux avec ce ces cet cette comme dans de des du d elle elles en entre est et etre il ils l la le les ' +
   'leur leurs lui mais ne ni nos notre on ou par pas peut plus pour qu que quel quelle quelles quels qui sa ' +
   'sans se ses son sont sous sur un une vers y quoi dont donc car or ete etait jusqu depuis jours mesure ' +
-  'faut doit s t n c j m tout tous toute toutes si fait ainsi'
+  'faut doit s t n c j m tout tous toute toutes si fait ainsi face'
 ).split(' '));
 
 /* ---------------------------------------------------------

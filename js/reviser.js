@@ -23,11 +23,18 @@ Vues.reviser = {
 
   dessinerAccueil() {
     const el = this.el;
-    const file = Flashcards.fileDuJour(this.filtre);
+    const file = Flashcards.fileDuJour(this.filtre, this.typesFiltre());
     const total = file.dues.length + file.nouvelles.length;
     const { serie, aujourdhuiFait } = Stats.serie();
     const auj = Stats.du(Revision.jour());
-    const nbCartes = Stockage.donnees.flashcards.filter((c) => Flashcards.correspond(c, this.filtre)).length;
+    const nbCartes = Stockage.donnees.flashcards.filter((c) => Flashcards.correspond(c, this.filtre, this.typesFiltre())).length;
+    // Nombre de cartes à réviser aujourd'hui pour chaque type (dans le thème choisi)
+    const parType = {};
+    for (const k of Object.keys(TYPES_CARTE)) {
+      const fk = Flashcards.fileDuJour(this.filtre, [k]);
+      const n = fk.dues.length + fk.nouvelles.length;
+      parType[k] = n ? `(${n} aujourd'hui)` : '';
+    }
 
     el.innerHTML = `
       <div class="entete-vue"><h1>🔁 Réviser</h1></div>
@@ -43,6 +50,14 @@ Vues.reviser = {
             <label><input type="radio" name="ordre" value="ordre" ${this.ordre() === 'ordre' ? 'checked' : ''}> 📋 Dans l'ordre du cours</label>
           </div>
           <div class="aide" style="margin-top:4px">${this.ordre() === 'ordre' ? "Chapitre par chapitre (dans l'ordre de la page Thèmes), puis dans l'ordre où les cartes ont été créées ou importées." : 'Toutes les cartes de la séance sont tirées au hasard.'}</div>
+        </div>
+        <div class="champ">
+          <label>Types de cartes <span class="aide">(coche ce que tu veux réviser)</span></label>
+          <div class="choix-types">
+            ${Object.entries(TYPES_CARTE).map(([k, v]) => `
+              <label class="choix-type"><input type="checkbox" data-type="${k}" ${this.typesChoisis().includes(k) ? 'checked' : ''}>
+                ${v.icone} ${v.texte} <span class="muet petit">${parType[k]}</span></label>`).join('')}
+          </div>
         </div>
         <div class="grille-stats">
           <div class="stat"><div class="stat-valeur">${file.dues.length}</div><div class="stat-libelle">cartes à revoir</div></div>
@@ -67,12 +82,18 @@ Vues.reviser = {
       Stockage.reglage('ordreRevision', r.value);
       this.dessinerAccueil();
     }));
+    el.querySelectorAll('[data-type]').forEach((c) => c.addEventListener('change', () => {
+      const choisis = [...el.querySelectorAll('[data-type]:checked')].map((x) => x.dataset.type);
+      if (!choisis.length) { c.checked = true; toast('Garde au moins un type de cartes.', 'attention'); return; }
+      Stockage.reglage('typesRevision', choisis.length === Object.keys(TYPES_CARTE).length ? null : choisis);
+      this.dessinerAccueil();
+    }));
     const b = (sel, fn) => { const x = el.querySelector(sel); if (x) x.addEventListener('click', fn); };
     b('[data-commencer]', () => this.commencer(this.construireFile(file.dues, file.nouvelles), 'jour'));
     b('[data-avance]', () => {
       const jour = Revision.jour();
       const prochaines = Stockage.donnees.flashcards
-        .filter((c) => Flashcards.correspond(c, this.filtre) && !Revision.estNouvelle(c) && c.sr.echeance > jour)
+        .filter((c) => Flashcards.correspond(c, this.filtre, this.typesFiltre()) && !Revision.estNouvelle(c) && c.sr.echeance > jour)
         .sort((a, c) => a.sr.echeance.localeCompare(c.sr.echeance))
         .slice(0, NB_EN_AVANCE);
       if (!prochaines.length) { toast('Aucune carte déjà apprise à réviser en avance.', 'attention'); return; }
@@ -80,11 +101,24 @@ Vues.reviser = {
     });
     b('[data-plus-nouvelles]', () => {
       const nouvelles = Stockage.donnees.flashcards
-        .filter((c) => Flashcards.correspond(c, this.filtre) && Revision.estNouvelle(c))
+        .filter((c) => Flashcards.correspond(c, this.filtre, this.typesFiltre()) && Revision.estNouvelle(c))
         .sort((a, c) => (a.creeLe || '').localeCompare(c.creeLe || ''))
         .slice(0, NB_NOUVELLES_EN_PLUS);
       this.commencer(this.ordonner(nouvelles), 'nouvelles');
     });
+  },
+
+  /** Types de cartes cochés (tous par défaut) */
+  typesChoisis() {
+    const t = Stockage.donnees.reglages.typesRevision;
+    const valides = Array.isArray(t) ? t.filter((k) => TYPES_CARTE[k]) : [];
+    return valides.length ? valides : Object.keys(TYPES_CARTE);
+  },
+
+  /** Filtre de types à passer à Flashcards (null = pas de filtre) */
+  typesFiltre() {
+    const t = this.typesChoisis();
+    return t.length === Object.keys(TYPES_CARTE).length ? null : t;
   },
 
   /** Ordre choisi : 'melange' (par défaut) ou 'ordre' */
@@ -236,7 +270,7 @@ Vues.reviser = {
     const duree = Math.max(1, Math.round((new Date(s.fin) - new Date(s.debut)) / 60000));
     const taux = s.revues ? Math.round((s.reussies / s.revues) * 100) : 0;
     const { serie } = Stats.serie();
-    const reste = Flashcards.fileDuJour(this.filtre);
+    const reste = Flashcards.fileDuJour(this.filtre, this.typesFiltre());
     const resteTotal = reste.dues.length + reste.nouvelles.length;
     this.el.innerHTML = `
       <div class="entete-vue"><h1>🔁 Séance terminée</h1></div>
